@@ -1,0 +1,168 @@
+{% extends 'adminpanel/base.html' %}
+
+{% load static %}
+
+{% block title %}Categories{% endblock %}
+
+{% block page_heading %}
+
+<div>
+    <div class="page-title-heading">
+    Categories</div>
+    <div class="page-title-subheading">This is a dedicated Admin dashboard for Collectanea Content Supervisors
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+
+{% block dashboard %}
+
+  <button type="button" class="mb-2 mr-2 btn-transition btn btn-outline-info mb-4 js-create-category" data-toggle="modal" data-target="#modal-book" data-url="{% url 'adminpanel:create_category' %}">
+    <i class="fa fa-plus"></i>  
+    Add Categories
+  </button> 
+
+
+  <div class="row">
+
+  		{% for category in categories %}
+
+  	<div class="col-md-3">
+  		<div class="main-card mb-3 card" style="background-color: {{category.color}}; ">
+          <div class="card-body">
+            <img width="30" class="rounded-circle" src="{{category.category_svg.url}}" alt="">&nbsp;
+            
+            <p> 
+    				<!-- <a href="{% url 'moderator:get_questions_by_category' category.id %}" style="text-decoration: none; color: #191919;"> -->
+            <h5><b>
+            <a href="{% url 'adminpanel:get_questions_by_category' category.id %}" style="text-decoration: none; color: #191919;">
+              {{category|title}}
+            </a>
+            </b></h5></p>
+            <p>{{category.details}}</p>
+            <span><b>
+              Status: {{ category.status }}</b>
+            </span>
+            <span class="text-right" style="float: right;">
+              <div class="dropdown d-inline-block">
+                <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"><i class="fa fa-fw" aria-hidden="true" title="Settings"></i></button>
+                <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu">
+                    <button type="button" tabindex="0" class="dropdown-item mb-2 mr-2 btn-transition btn js-update-category" data-toggle="modal" data-target="#modal-book"  data-url="{% url 'adminpanel:update_category' category.id %}" style="text-decoration: none;">Edit</button>
+                    {% if category.status != 'Active' %}
+                    <a href="{% url 'adminpanel:change_category_status' category.id 0 %}" style="text-decoration: none;">
+                    <button type="button" tabindex="0" class="dropdown-item">Activate</button></a>
+                    {% else %}
+                    <a href="{% url 'adminpanel:change_category_status' category.id 1 %}" style="text-decoration: none;">
+                    <button type="button" tabindex="0" class="dropdown-item">Deactivate</button></a>
+                    {% endif %}
+                </div>
+              </div>
+            </span>
+          </div>
+  		</div>
+  	</div>
+  		{% endfor %}
+
+  </div>
+ 
+
+{% endblock %}
+
+
+<!-- 
+<script type="text/javascript">
+$(function () {
+
+  $(".js-create-category").click(function () {
+    var btn = $(this);
+    $.ajax({
+      url: btn.attr("data-url"),
+      type: 'get',
+      dataType: 'json',
+      beforeSend: function () {
+        $("#modal-book").addClass("show");
+        $("#modal-book").css("display", "block");
+        $("#modal-book").removeAttr("aria-hidden");
+        $("#modal-book").attr("aria-modal", "true");
+      },
+      success: function (data) {
+        console.log("fdsabflkh")
+        $("#modal-book .modal-content").html(data.html_form);
+      }
+    });
+  });
+  
+});
+</script> -->
+
+
+
+{% block js %}
+
+<script type="text/javascript">
+$(function (){
+
+  var loadForm = function() {
+    var btn = $(this);
+    console.log(btn.attr("data-url"))
+    $.ajax({
+      url: btn.attr("data-url"),
+      type: 'get',
+      dataType: 'json',
+      beforeSend: function() {
+        $("#modal-book").addClass("show");
+        $("#modal-book").css("display", "block");
+        $("#modal-book").removeAttr("aria-hidden");
+        $("#modal-book").attr("aria-modal", "true");
+      },
+      success: function(data){
+        console.log("fdsabflkh")
+        $("#modal-book .modal-content").html(data.html_form);
+      },
+    });
+  };
+
+  var saveForm = function(){
+    console.log("fasdkhfliuahfl")
+    var form = $(this);
+    var data = new FormData(this);
+    $.ajax({
+      url: form.attr("action"),
+      type: form.attr("method"),
+      data: data,
+      dataType: 'json',
+      processData: false,
+      contentType: false,
+      success: function (data) {
+          if (data.form_is_valid) {
+            $("#modal-book").removeClass("show");
+            $("#modal-book").css("display", "none");
+            $("#modal-book").removeAttr("aria-modal");
+            $("#modal-book").attr("aria-hidden", "true");             
+            location.reload()
+          }
+          else {
+            console.log("form not valid")
+            $("#modal-book .modal-content").html(data.html_form);
+          }
+        }
+    });
+    return false;
+  };
+
+  //create category
+  $(".js-create-category").click(loadForm);
+  $("#modal-book").on("submit", ".js-category-create-form", saveForm);
+
+  //update category
+  $(".js-update-category").click(loadForm);
+  $("#modal-book").on("submit", ".js-category-update-form", saveForm)
+
+});
+
+</script>
+
+{% endblock %}

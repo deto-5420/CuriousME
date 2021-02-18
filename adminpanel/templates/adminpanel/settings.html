@@ -1,0 +1,59 @@
+{% extends 'adminpanel/base.html' %}
+
+{% load static %}
+
+{% block title %}Categories{% endblock %}
+
+{% block page_heading %}
+
+<div>
+    <div class="page-title-heading">
+    Settings</div>
+    <div class="page-title-subheading">This is a dedicated Admin dashboard for Collectanea Content Supervisors
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% load widget_tweaks %}
+
+{% block dashboard %}
+
+<div class="row">
+	<div class="col-md-6">
+		<div class="card">
+			<div class="card-body">
+				<form method="POST" action="{% url 'adminpanel:settings' %}">
+					{% csrf_token %}
+					<!-- <div class="position-relative row form-group"><label for="" class="col-sm-4 col-form-label">Open Question Limit</label>
+	                    <div class="col-sm-6"><input name="qlimit" id="" placeholder="Enter Limit" type="number" min="0" class="form-control"></div>
+	                    <div class="col-sm-2"><span class="badge badge-pill badge-alternate mt-2">{{qlimit}}</span></div>
+	                </div>
+	                <div class="position-relative row form-group"><label for="" class="col-sm-4 col-form-label">Open Answer Limit</label>
+	                    <div class="col-sm-6"><input name="alimit" id="" placeholder="Enter Limit" type="number" min="0" class="form-control"></div>
+	                    <div class="col-sm-2"><span class="badge badge-pill badge-alternate mt-2">{{alimit}}</span></div>
+	                </div>
+	                <div class="position-relative row form-group"><label for="" class="col-sm-4 col-form-label">Open Reply Limit</label>
+	                    <div class="col-sm-6"><input name="rlimit" id="" placeholder="Enter Limit" type="number" min="0" class="form-control"></div>
+	                    <div class="col-sm-2"><span class="badge badge-pill badge-alternate mt-2">{{rlimit}}</span></div>
+	                </div> -->
+					{% for field in form %}
+					  <div class="form-group{% if field.errors %} has-error{% endif %}">
+					    <label for="{{ field.id_for_label }}">{{ field.label }}</label>
+					    {% render_field field class="form-control" %}
+					    {% for error in field.errors %}
+					      <p class="help-block">{{ error }}</p>
+					    {% endfor %}
+					  </div>
+					{% endfor %}
+
+	                <button class="mb-2 mr-2 btn-transition btn btn-outline-alternate" type="submit">Update</button>
+				</form>
+			</div>
+		</div>
+	</div>
+</div>
+
+{% endblock %}
