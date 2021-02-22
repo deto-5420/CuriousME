@@ -1,0 +1,43 @@
+{% extends 'moderatorpanel/base.html' %}
+
+{% load static %}
+
+{% block title %}Categories{% endblock %}
+
+{% block page_heading %}
+
+<div>
+    Categories
+    <div class="page-title-subheading">This is a dedicated Moderator dashboard for Collectanea Content writers
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block dashboard %}
+
+  <div class="row">
+  		{% for category in category %}
+
+  	<div class="col-md-3">
+  		<div class="main-card mb-3 card" style="background-color: {{category.color}}; ">
+          <div class="card-body">
+            <img width="30" class="rounded-circle" src="{{category.category_svg.url}}" alt="">&nbsp;
+            
+            <p> 
+    				<a href="{% url 'moderator:get_questions_by_category' category.id %}" style="text-decoration: none; color: #191919;"><h5>{{category|title}}</h5></a></p>
+            <p>{{category.details}}</p>
+            <a href="{% url 'moderator:get_questions_by_category' category.id %}" style="text-decoration: none; color: #191919;">
+            <h5 class="text-right">
+            <i class="fa fa-fw" aria-hidden="true" title="Copy to use arrow-right"></i>
+            </h5>
+            </a>
+          </div>
+  		</div>
+  	</div>
+  		{% endfor %}
+
+  </div>
+
+{% endblock %}

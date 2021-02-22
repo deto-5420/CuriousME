@@ -1,0 +1,49 @@
+<form method="post" enctype="multipart/form-data" action="{% url 'moderator:edit_question' form.instance.pk %}" class="js-question-edit-form">
+  {% csrf_token %}
+  <div class="modal-header">
+    <h4 class="modal-title">Edit Question</h4>
+    
+    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+      <span aria-hidden="true">&times;</span>
+    </button>
+  </div>
+  <div class="modal-body">
+   
+    {% include 'moderatorpanel/qform.html' %}
+
+  </div>
+  <div class="modal-footer">
+    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+    <button type="submit" class="btn btn-primary">Update Question</button>
+  </div>
+</form>
+
+
+{% block js %}
+<script>
+  $("#id_keywords_associated").select2({
+    tags:true,
+    delay: 250,
+    placeholder: "Type to add keywords",
+    theme: "classic",
+    minimumInputLength: 3,
+    ajax :{
+      url: '{% url "moderator:return_keyword" %}',
+      dataType: 'json',
+      data: function(params){
+      return{
+        'k': params.term
+       };
+      },
+      processResults: function (data){
+        return {
+            results: $.map(data, function (item) {
+                return {id: item.id, text: item.name};
+            })
+        };
+      },
+      cache: true,
+    }
+});
+</script>
+{% endblock %}

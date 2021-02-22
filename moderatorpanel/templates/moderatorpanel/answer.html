@@ -1,0 +1,206 @@
+{% extends 'moderatorpanel/base.html' %}
+
+{% load static %}
+
+{% block title %}Answer and Replies{% endblock %}
+
+{% block page_heading %}
+
+<div>
+    Answers and Replies
+    <div class="page-title-subheading">This is a dedicated Moderator dashboard for Collectanea Content writers.
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block dashboard %}
+
+  <div class="row">
+  	
+  	<div class="col-md-12">
+  		
+  		<div class="main-card mb-3 card" style="position:relative; background-color: ;">
+        <div class="card-body">
+            <h5 class="card-title" 
+                style="overflow: hidden;
+                      text-overflow: ellipsis;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 3;
+                      -webkit-box-orient: vertical;
+                      font-size: 20px;
+                      text-transform: none;"
+            >
+              {{question.content|title}}  
+            
+              
+            </h5>
+            
+          <p class="card-subtitle">
+                <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.category}}</div>
+
+                {% for keyword in question.keywords_associated.all %}
+                <div class="mb-2 mr-2 badge badge-pill badge-info">{{keyword}}</div>
+                    {% endfor %}
+
+                <div class="dropdown d-inline-block ">
+                    <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"></button>
+                    <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu" x-placement="bottom-start" style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(0px, 33px, 0px);">
+                        <button type="button" tabindex="0" class="dropdown-item js-edit-question" data-toggle="modal" data-target="#modal-book"  data-url="{% url 'moderator:edit_question' question.id %}">Edit</button>
+                        <a href="{% url 'moderator:delete_question' question.id %}">
+                        <button type="button" tabindex="0" class="dropdown-item">Delete</button></a>
+                    </div>
+                </div>
+            </p>
+
+            <div class="widget-content p-0">
+                <div class="widget-content-wrapper">
+                  <div class="widget-content-left">
+                    <div class="btn-group">
+                      <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                        <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+                      </a>
+                                
+                    </div>
+                  </div>
+                  <div class="widget-content-left  ml-3 header-user-info">
+                    <div class="widget-heading">
+                      {{question.author}}
+
+                    </div>
+                    <div class="widget-subheading">
+                      {{question.author.profession}}
+                    </div>
+
+                  </div>
+                        
+                </div>
+                {% if files %}
+                <div class="m-1">
+                    <img src="{{ MEDIA_URL }}{{ files.url }}" alt="">
+                    <span>{{files.url}}</span>
+                    <span>sdjfl;sdjfds</span>
+                    <span>sdjfl;sdjfds</span>
+                  
+                </div>
+                {% endif %}
+                <div class="mt-3 ml-2" style="position: relative;">
+                  <p style="">
+                      Total Answers : {{question.answer_count}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    
+                      <i class="fa fa-heart m-1" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{question.like_count}}
+                    <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-up"></i> {{question.upvote_count}}
+                    <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.downvote_count}}
+                  </p>
+                </div>
+            </div>  <p></p>
+
+            {% for answer in answers %}
+          <div class="main-card mb-3 ml-5 card" style="background-color: #f2f2f2;">
+            <div class="card-body">
+              <a href="" style="text-decoration: none; color: black;">  
+            	<img width="30" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">&nbsp;
+              {{answer.user_id.fullname|title}}
+              </a>
+              <p class="ml-4">
+              	{{answer.content}}
+              </p> 
+            </div>
+            {% if not replies.count == 0 %}
+            <div class="container">
+            	<div id="exampleAccordion" data-children=".item">
+            	<div class="item mb-3">
+                <span>
+                <button type="button" aria-expanded="false" aria-controls="exampleAccordion" data-toggle="collapse" data-target="#collapseExample{{forloop.counter}}" class="mb-1 mr-1 btn btn-outline-dark btn-sm">Click to see all {{replies.count}} Replies</button></span>
+                <span style="float: right;">
+                <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{answer.like_count}}
+                <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{answer.dislike_count}}
+                </span>
+                 {% for reply in replies %}
+
+                    <div data-parent="#exampleAccordion" id="collapseExample{{forloop.parentloop.counter}}" class="collapse" style="">
+                      <p class="">
+                        <div class="main-card ml-5 card" style="background-color: #e2e2e2; ">
+                          <div class="card-body">
+                            <a href="" style="text-decoration: none; color: black;">  
+                          <img width="30" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">&nbsp;{{ reply.user_id.fullname|title }}
+                          </a>
+                          <p class="ml-4">
+                            {{reply}}
+                          </p>
+                          <div style="float: right;">
+                            <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{reply.like_count}}
+                            <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{reply.dislike_count}}
+                          </div>
+                          </div>
+                        </div>
+                      </p>
+                    </div>
+                    <div id="replies">                       
+                    
+                  </div>
+
+                  {% endfor %}
+                  
+
+              </div>
+            </div>
+            </div>
+            {% endif %}
+    	    </div>
+            
+            <button id = "load_replies" data-url="{% url 'moderator:replies' answer.id %}" class="mb-2 mr-2 border-0 btn-transition btn btn-outline-dark" data-page="2">See More Replies</button>
+          
+          
+
+            {% endfor %}
+        </div>
+  </div>
+
+  	</div>
+
+  </div>	
+
+{% endblock %}
+
+{% block js %}
+
+<script type="text/javascript">
+
+
+
+(function($) {
+      $('#load_replies').on('click', function() {
+        var link = $(this);
+        var page = link.data('page');
+        $.ajax({
+          type: 'post',
+          url: link.attr("data-url"),
+          data: {
+            'page': page,
+            'csrfmiddlewaretoken': window.CSRF_TOKEN // from index.html
+          },
+          success: function(data) {
+            // if there are still more pages to load,
+            // add 1 to the "Load More Posts" link's page data attribute
+            // else hide the link
+            if (data.has_next) {
+                link.data('page', page+1);
+            } else {
+              console.log("No next page")
+              link.hide();
+            }
+            // append html to the posts div
+            $('#replies').append(data.reply_html);
+          },
+          error: function(xhr, status, error) {
+            // shit happens friends!
+          }
+        });
+      });
+    }(jQuery));
+
+</script>
+
+{% endblock %}

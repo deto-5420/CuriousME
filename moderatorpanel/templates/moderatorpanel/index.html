@@ -1,0 +1,276 @@
+{% extends 'moderatorpanel/base.html' %}
+
+{% block title %}Moderator Home{% endblock %}
+
+{% block page_heading %}
+                                    
+                                    
+<div>
+    Collectanea Moderator Dashboard
+    <div class="page-title-subheading">This is a dedicated Moderator dashboard for Collectanea Content writers
+    </div>
+</div>
+
+{% endblock %}
+{% block dashboard %}
+
+
+<div class="row">
+    <div class="col-md-6 col-xl-3">
+        <div class="card mb-3 widget-content">
+            <div class="widget-content-wrapper">
+                <div class="widget-content-left">
+                    <div class="widget-heading"><div class="mb-2 mr-2 badge badge-primary">Add a Question</div></div>
+                    <div class="widget-subheading">Click on Add Icon</div>
+                </div>
+                <div class="widget-content-right">
+                    <div class="widget-numbers text-success">
+                        <span><a href="{% url 'moderator:question_form' %}"><button type="button" class="btn mr-2 mb-2 btn-primary" > <i class="fa fa-fw" aria-hidden="true" title="Copy to use plus"></i></button>
+                       </a> 
+                    </span>
+                    </div>
+                </div>
+                
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card mb-3 widget-content bg-midnight-bloom">
+            <div class="widget-content-wrapper text-white">
+                <div class="widget-content-left">
+                    <div class="widget-heading">Total Questions</div>
+                    <div class="widget-subheading">Asked By Me</div>
+                </div>
+                <div class="widget-content-right">
+                    <div class="widget-numbers text-white"><span>{{question_count}}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card mb-3 widget-content bg-arielle-smile">
+            <div class="widget-content-wrapper text-white">
+                <div class="widget-content-left">
+                    <div class="widget-heading">Total Answers</div>
+                    <div class="widget-subheading">Recieved</div>
+                </div>
+                <div class="widget-content-right">
+                    <div class="widget-numbers text-white"><span>{{answer_count}}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6 col-xl-3">
+        <div class="card mb-3 widget-content bg-grow-early">
+            <div class="widget-content-wrapper text-white">
+                <div class="widget-content-left">
+                    <div class="widget-heading">Total Replies</div>
+                    <div class="widget-subheading">Recieved on Question's Answer</div>
+                </div>
+                <div class="widget-content-right">
+                    <div class="widget-numbers text-white"><span>{{replies_count}}</span></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+{% if recent_questions %}
+<header><h4>Recent Questions</h4></header>
+
+<div class="row">
+{% for question in recent_questions %}
+  <div class = "col col-md-6 col-xl-4">  
+  	<div class="main-card mb-3 card">
+        <div class="card-body">
+
+            <div class="dropdown d-inline-block mt-1" style="position: absolute; top:0px; right: 0px;">
+                <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"></button>
+                <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu" x-placement="bottom-start" style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(0px, 33px, 0px);">
+
+                        <button type="button" tabindex="0" class="dropdown-item js-edit-question" data-toggle="modal" data-target="#modal-book"  data-url="{% url 'moderator:edit_question' question.id %}">Edit</button>
+                    <a href="{% url 'moderator:delete_question' question.id %}">
+                        <button type="button" tabindex="0" class="dropdown-item" data-toggle="modal" data-target=".bd-example-modal-sm">Delete</button>
+                    </a>
+                </div>
+            </div>
+
+            <h5 class="card-title mr-1" 
+                style="overflow: hidden;
+                      text-overflow: ellipsis;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 3;
+                      -webkit-box-orient: vertical;"
+            >
+             <a href="{% url 'moderator:answer_page' question.id %}" style="text-decoration: none; color: #4c4c4c;"> 
+              {{question.content}}  
+            </a>
+            </h5>
+            
+        	<p class="card-subtitle">
+                <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.category}}</div>
+                {% for keyword in question.keywords_associated.all %}
+        		<div class="mb-2 mr-2 badge badge-pill badge-info">{{keyword}}</div>
+                {% endfor %}
+                
+            </p>
+
+            <div class="widget-content p-0">
+                <div class="widget-content-wrapper">
+                  <div class="widget-content-left">
+                    <div class="btn-group">
+                      <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                        <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+                      </a>
+                                
+                    </div>
+                  </div>
+                  <div class="widget-content-left  ml-3 header-user-info">
+                    <div class="widget-heading">
+                      {{question.author}}
+                    </div>
+                    <div class="widget-subheading">
+                      {{question.author.profession}}
+                    </div>
+                  </div>
+                        
+                </div>
+            </div>  <p></p>
+            <p>
+                Total Answers : {{question.answer_count}}
+                <div style="position: absolute; bottom: 35px; right: 20px;">
+                <i class="fa fa-heart m-1" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{question.like_count}}
+            	<i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-up"></i> {{question.upvote_count}}
+            	<i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.downvote_count}}</div>
+            </p>
+            
+        </div>
+	</div>
+  </div>	
+
+
+{% endfor %}
+
+</div>
+
+{% endif %}
+
+<div class="row">
+    <div class="col-md-12">
+        <div class="main-card mb-3 card">
+            <div class="card-header">My Question Status
+                <div class="btn-actions-pane-right">
+                    <div role="group" class="btn-group-sm btn-group">
+                       <!--  <button class="active btn btn-focus">Last Week</button>
+                        <button class="btn btn-focus">All Month</button> -->
+                    </div>
+                </div>
+            </div>
+            <div class="table-responsive">
+                <table class="align-middle mb-0 table table-borderless table-striped table-hover">
+                    <thead>
+                    <tr>
+                        <th class="text-center">#</th>
+                        <th>Question</th>
+                        <th class="text-center">Type</th>
+                        <th class="text-center">Category</th>
+                        <th class="text-center">Status</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                        {% for question in page_obj %}
+                    <tr>
+                        <td class="text-center text-muted">{{question.id}}</td>
+                        <td>
+                            <div class="widget-content p-0">
+                                <div class="widget-content-wrapper">
+                                    <div class="widget-content-left mr-3">
+                                        <div class="widget-content-left">
+                                            <img width="40" class="rounded-circle" src="assets/images/avatars/4.jpg" alt="">
+                                        </div>
+                                    </div>
+                                    <div class="widget-content-left flex2">
+                                        <div class="widget-heading">{{question.content}}</div>
+                                        {% for keyword in question.keywords_associated.all %}
+                                        <span class="widget-subheading opacity-7">{{keyword|title}}</span>
+                                        {% endfor %}
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="text-center">{{question.question_type|title}}</td>
+                        <td class="text-center">
+                            {{question.category}}
+                        </td>
+                        {% if question.status == 'open' %}
+                        <td class="text-center">
+                            <div class="badge badge-success">{{question.status}}</div>
+                        </td>
+                        {% endif %}
+                        {% if question.status == 'pending' %}
+                        <td class="text-center">
+                            <div class="badge badge-warning">{{question.status}}</div>
+                        </td>
+                        {% endif %}
+                        {% if question.status == 'deleted' %}
+                        <td class="text-center">
+                            <div class="badge badge-danger">{{question.status}}</div>
+                        </td>
+                        {% endif %}
+                        {% if question.status == 'waiting' %}
+                        <td class="text-center">
+                            <div class="badge badge-secondary">{{question.status}}</div>
+                        </td>
+                        {% endif %}
+                    </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            <div class="d-block text-center card-footer">
+                {% if page_obj.has_other_pages %}
+            	<ul class="pagination">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item"><a href="?page={{ page_obj.previous_page_number }}" class="page-link" aria-label="Previous"><span aria-hidden="true">«</span><span class="sr-only">Previous</span></a></li>
+                    {% else %}
+                        <!-- <li class="page-item" disable><a href="" class="page-link" aria-label="Previous"><span aria-hidden="true">«</span><span class="sr-only">Previous</span></a></li> -->
+                    {% endif %}
+
+                    {% for i in page_obj.paginator.page_range %}
+                      {% if users.number == i %}
+                        <li class="page-item active"><span>{{ i }}<span class="sr-only">(current)</span></span></li>
+                      {% else %}
+                        <li><a href="?page={{ i }}">{{ i }}</a></li>
+                      {% endif %}
+                    {% endfor %}
+                        <!-- <li class="page-item"><a href="javascript:void(0);" class="page-link">1</a></li> -->
+
+                    {% if page_obj.has_next %}
+                      <li class="page-item"><a href="?page={{ page_obj.next_page_number }}" class="page-link" aria-label="Next"><span aria-hidden="true">»</span><span class="sr-only">Next</span></a></li>
+                    {% else %}
+                      <!-- <li class="page-item" disable><a href="javascript:void(0);" class="page-link" aria-label="Next"><span aria-hidden="true">»</span><span class="sr-only">Next</span></a></li> -->
+                    {% endif %}
+                        
+                        
+                </ul>
+                {% endif %}
+            </div>
+
+        </div>
+    </div>
+</div>
+
+
+{% if messages %}
+
+{% for message in messages %}
+<!-- 
+<script type="text/javascript">
+    alert('{{message}}')
+</script> -->
+
+{% endfor %}
+
+{% endif %}
+
+{% endblock %}
