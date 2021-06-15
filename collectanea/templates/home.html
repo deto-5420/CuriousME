@@ -1,0 +1,37 @@
+{% load static %}
+<html>
+  <head>
+    <title>Notifier</title>
+    
+  </head>
+  <body>
+    <h1>Notifier</h1>
+    <p>Notifications</p>
+    <ul id="notifylist"></ul>
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+      import { WebSocketBridge } from 'django-channels'
+      const webSocketBridge = new channels.WebSocketBridge();
+      const nl = document.querySelector("#notifylist");
+      
+      webSocketBridge.connect('/notifications/');
+      webSocketBridge.listen(function(action, stream) {
+        console.log("RESPONSE:", action);
+        if(action.event == "New User") {
+          var el = document.createElement("li");
+          el.innerHTML = `New user <b>${action.username}</b> has joined!`;
+          nl.appendChild(el);
+        }
+      })
+      document.ws = webSocketBridge; /* for debugging */
+    })
+    </script>
+    {% if messages %}
+    {% for  message in messages %}
+    <script>
+        alert('{{message}}');
+    </script>
+    {% endfor %}
+    {% endif %}
+  </body>
+</html>

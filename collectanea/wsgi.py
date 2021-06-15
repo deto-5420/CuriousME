@@ -11,7 +11,7 @@ import os, django
 
 from django.core.wsgi import get_wsgi_application
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'collectanea.settings.base')
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'collectanea.settings.production')
 # os.environ["DJANGO_SETTINGS_MODULE"] = "collectanea.settings.base"
 # django.setup()
 application = get_wsgi_application()

@@ -17,12 +17,20 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf.urls.static import static
 from django.conf import settings
-
+import notifications.urls
+from django.conf.urls import url
+from .views import HomeView
 urlpatterns = [
+    path("",HomeView.as_view()),
     path('admin/', admin.site.urls),
+    path('accounts/', include('allauth.urls')),
     path('api/auth/', include('accounts.urls')),
     path('api/questions/', include('questions.urls')),
     path('moderator/', include('moderatorpanel.urls')),
     path('adminpanel/', include('adminpanel.urls')),
+    path('api/answers/', include('answers.urls')),
+    path('api/misc/', include('misc.urls')),
+    
+    url('^inbox/notifications/', include(notifications.urls, namespace='notifications')),
 ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT) + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 

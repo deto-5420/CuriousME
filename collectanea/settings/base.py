@@ -12,9 +12,8 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 from decouple import config
 from pathlib import Path
 import os
-import django_heroku
-
 # import django_heroku
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -31,6 +30,7 @@ DEBUG = config('DEBUG')
 # Application definition
 
 INSTALLED_APPS = [
+    'channels',
     'django.contrib.admin',
     'django.contrib.auth',
     'django.contrib.contenttypes',
@@ -66,7 +66,20 @@ INSTALLED_APPS = [
     'adminpanel',
     'moderatorpanel',
     'misc',
+    'notifications',
+    'wkhtmltopdf',
+    'otp'
+
+    
 ]
+# WKHTMLTOPDF_CMD = '/usr/local/bin/wkhtmltopdf'
+WKHTMLTOPDF_CMD_OPTIONS = {
+'quiet': True,
+}
+# WKHTMLTOPDF_CMD = 'file:///home/detonator/python-environments/awesome_venv'
+
+DJANGO_NOTIFICATIONS_CONFIG = { 'USE_JSONFIELD': True}
+
 
 IMPORT_EXPORT_USE_TRANSACTIONS = True
 FAKER_LOCALE = None     # settings.LANGUAGE_CODE is loaded
@@ -75,9 +88,8 @@ FAKER_PROVIDERS = None  # faker.DEFAULT_PROVIDERS is loaded (all
 CORS_ALLOW_ALL_ORIGINS =  True
 CORS_REPLACE_HTTPS_REFERER = True
 
-# CORS_ORIGIN_ALLOW_ALL = True
-CORS_ALLOW_CREDENTIALS = False
-
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ALLOW_CREDENTIALS = True
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     "whitenoise.middleware.WhiteNoiseMiddleware",
@@ -142,7 +154,7 @@ AUTHENTICATION_BACKENDS = (
     'django.contrib.auth.backends.ModelBackend',
 
     # `allauth` specific authentication methods, such as login by e-mail
-    # 'allauth.account.auth_backends.AuthenticationBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 )
 
 
@@ -161,7 +173,7 @@ REST_FRAMEWORK = {
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Kolkata'
 
 USE_I18N = True
 
@@ -182,10 +194,10 @@ USE_TZ = True
 # EMAIL_PORT = int(config("EMAIL_PORT"))
 
 # # EMAIL ADDRESSES
-# SENDER_EMAIL = config("SENDER_EMAIL")
+SENDER_EMAIL = config("SENDER_EMAIL")
 # ADMINS_EMAIL = ast.literal_eval(config("ADMINS_EMAIL"))
 
-# SENDGRID_API_KEY = config("SENDGRID_API_KEY")
+SENDGRID_API_KEY = config("SENDGRID_API_KEY")
 # # STRIPE_API_KEY = config("STRIPE_API_KEY")
 
 # # Facebook Social AUTH Keys
@@ -227,17 +239,23 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 
+ACCOUNT_ADAPTER = 'collectanea.adapter.MyAccountAdapter'
 
-STATIC_URL = '/static/'
-STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
-STATIC_DIR = os.path.join(BASE_DIR, 'static')
-# STATICFILES_DIRS = [STATIC_DIR, ]
+# STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
 
-MEDIA_URL = '/media/'
-MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+# django_heroku.settings(locals())    
 
-STATICFILES_STORAGE = "whitenoise.storage.CompressedManifestStaticFilesStorage"
+# Django Channels
+ASGI_APPLICATION = "collectanea.routing.application"    # your_project_name.routing.application
+# End Django Channels
 
-django_heroku.settings(locals())    
 
+CHANNEL_LAYERS = {
+    "default": {
+        "BACKEND": "channels_redis.core.RedisChannelLayer",
+        "CONFIG": {
+            "hosts": [("localhost", 6379)],   # Change localhost to the ip in which you have redis server running on.
+        },
+    },
+}

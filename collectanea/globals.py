@@ -1,5 +1,5 @@
 ALLOWED_PROFILE_IMAGE_FORMATS = ['image/png', 'image/jpg', 'image/jpeg']
-ALLOWED_FILE_FORMATS = ['image/png', 'image/jpg', 'image/jpeg', 'application/pdf', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation']
+ALLOWED_FILE_FORMATS = ['image/png', 'image/jpg', 'image/jpeg', 'image/gif', 'application/pdf', 'image/svg+xml', 'application/msword', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-powerpoint', 'application/vnd.openxmlformats-officedocument.presentationml.presentation']
 
 STRIPE_RETURN_URL = 'https://www.bitsybits.com/login/'
 STRIPE_REFRESH_URL = 'https://www.bitsybits.com/'
@@ -8,7 +8,7 @@ STRIPE_REFRESH_URL = 'https://www.bitsybits.com/'
 MAX_PROFILE_IMAGE_SIZE = 3145728 
 
 MAX_MEDIA_ALLOWED = 10
-MAX_MEDIA_SIZE = 1024*1024*10
+MAX_MEDIA_SIZE = 10485760
 
 MAX_QUESTION_SIZE = 250
 MAX_BIO_LENGTH = 140
@@ -76,8 +76,8 @@ QUESTION_STATUS = (
 
 ANSWER_STATUS = (
     ('open', 'Open'),
-    ('Deleted', 'Deleted'),
-    ('pending', 'pending'),
+    ('deleted', 'Deleted'),
+    # ('pending', 'pending'),
     ('spammed', 'Spammed'),
 )
 
@@ -100,24 +100,9 @@ SPAMMED_STATUS = (
 
 VOTE_CHOICES = (
     ('upvote', 'Upvote'),
-    ('downvoye', 'Downvote'),
+    ('downvote', 'Downvote'),
 )
 
-OPEN_QUESTION_LIMIT = 10
-OPEN_ANSWER_LIMIT = 10
-OPEN_REPLY_LIMIT = 10
+sub_domain='server.collectanea.co'
 
-def change_qlimit(qlimit):
-    global OPEN_QUESTION_LIMIT
-    OPEN_QUESTION_LIMIT = qlimit
-    return OPEN_QUESTION_LIMIT
-
-def change_alimit(alimit):
-    global OPEN_ANSWER_LIMIT
-    OPEN_ANSWER_LIMIT = alimit
-    return OPEN_ANSWER_LIMIT
-
-def change_rlimit(rlimit):
-    global OPEN_REPLY_LIMIT
-    OPEN_REPLY_LIMIT = rlimit
-    return OPEN_REPLY_LIMIT
+email_domain="https://frontendb.herokuapp.com"
