@@ -2,6 +2,7 @@ import random
 import string
 # import stripe 
 import requests
+import json
 
 from django.db.models import Q
 from django.conf import settings
@@ -16,6 +17,7 @@ from django.http import Http404
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_text
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from collectanea.globals import *
 from requests.exceptions import HTTPError
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -33,7 +35,7 @@ from collectanea.globals import (USER_STATUS, STRIPE_RETURN_URL,
 from sendgrid import SendGridAPIClient
 from sendgrid.helpers.mail import Mail
 
-from .models import Profile, User, ProfessionList
+from .models import Profile, User, ProfessionList, UserFollowing
 from .serializers import (
                             ForgotPasswordEmailSerializer,
                             RegistrationSerializer, SetNewPasswordSerializer
@@ -49,7 +51,7 @@ from .tokens import account_activation_token
 @api_view(['POST',])
 def register_user(request):
     if request.method == 'POST':
-        email = request.data.get('email')
+        email = request.data.get('email').lower()
         username = request.data.get('username')
 
         check_user = User.objects.filter(email=email).first()
@@ -75,17 +77,19 @@ def register_user(request):
             }
             return Response(response, status=HTTP_400_BAD_REQUEST)
 
-        print(request.data)
         serializer = RegistrationSerializer(data = request.data)
-        print(serializer)
+
         if serializer.is_valid():
             account = serializer.save()
-            print(account)
             fullname = request.data.get('fullname')
-            profes = request.data.get('profession')
-
+            profes = request.data.get('Profession')
             try:
-               profession = ProfessionList.objects.filter(Q(name__icontains = profes) | Q(id=profes)).first()
+                profession=None
+                if type(profes)==int :
+                    profession = ProfessionList.objects.filter(Q(id=profes)).first()
+                else:
+                    profession = ProfessionList.objects.filter(Q(name__icontains = profes)).first() 
+
             except:
                 response = {
                     'message':'Profession not available',
@@ -94,23 +98,18 @@ def register_user(request):
                 }
                 return Response(response, status=HTTP_400_BAD_REQUEST)
             
-            Profile.objects.create(user=account, fullname=fullname, profession=profession)
-
-            current_site = get_current_site(request)
-            mail_subject = '[noreply] Activate your Account'
-            msg = 'Thanks for Signing up with Collectanea.'
-
-            message = render_to_string('acc_email_active.html', {
+            a=Profile.objects.create(user=account, fullname=fullname, profession=profession)
+            current_site = email_domain + "/account-activation"
+            mail_subject = '[noreply] Activate your Account'      
+            message = render_to_string('mail.html', {
                 'user': account,
-                'domain': current_site.domain,
-                'msg':msg,
-                'uid':urlsafe_base64_encode(force_bytes(account.pk)),
-                'token':account_activation_token.make_token(account),
+                'domain': current_site,
+                'uid': urlsafe_base64_encode(force_bytes(account.pk)),
+                'token': account_activation_token.make_token(user=account),
             })
-
             to_email = [account.email]
-            # from_email = settings.SENDER_EMAIL
-            from_email = ''
+            from_email = settings.SENDER_EMAIL
+
             email = Mail(
                 from_email=from_email,
                 to_emails=to_email,
@@ -118,9 +117,11 @@ def register_user(request):
                 html_content=message,
             )
             try:
+
                 sg = SendGridAPIClient(settings.SENDGRID_API_KEY)
                 response = sg.send(email)
             except Exception as e:
+
                 response = {
                     'message':'User Registration failed',
                     'error':["Mail not sent"],
@@ -155,7 +156,7 @@ def activate(request, uidb64, token):
         email=None
 
     if user is not None and account_activation_token.check_token(user, token):
-        profile = user.userAssociated.all().first()
+        profile = user.userAssociated
 
         # stripe.api_key = settings.STRIPE_API_KEY
 
@@ -220,7 +221,7 @@ def activate(request, uidb64, token):
 def login_user(request):
     if request.method == 'POST':
         email = password = ''
-        email = request.data['email']
+        email = request.data['email'].lower()
         password = request.data['password']
         print(email, password)
         user = authenticate(email=email, password=password)
@@ -265,8 +266,8 @@ def login_user(request):
                     'status':HTTP_401_UNAUTHORIZED
                 }
                 return Response(response, status=HTTP_401_UNAUTHORIZED)
-
-            profile = user.userAssociated.all().first()
+            
+            profile = user.userAssociated
             data = ProfileSerializer(profile).data
             data['token'] = token
 
@@ -292,7 +293,7 @@ class PasswordResetEmail(APIView):
     def post(self, request):
         serializer = self.serializer_class(data=request.data)
         
-        email = request.data['email']
+        email = request.data['email'].lower()
         user = User.objects.filter(email=email).first()
         if user:
             print(user.status)
@@ -307,18 +308,29 @@ class PasswordResetEmail(APIView):
 
             uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
             token = PasswordResetTokenGenerator().make_token(user)
-
-            current_site = get_current_site(request)
+            print()
+            print(token)
+            current_site = email_domain + "/forget-password-reset"
             mail_subject = '[noreply] Reset your Password'
             msg = 'You will be redirected to the password reset page.'
+            try:
+                message = render_to_string('password_reset.html', {
+                    'user': user.username,
+                    'domain': current_site,
+                    'msg':msg,
+                    'uid':uidb64,
+                    'token':token,
+                })
+            except Exception as E:
+                print(E)
 
-            message = render_to_string('password_reset_link.html', {
-                'user': user,
-                'domain': current_site.domain,
-                'msg':msg,
-                'uid':uidb64,
-                'token':token,
-            })
+            # render_to_string('password_reset_link.html', {
+            #     'user': user,
+            #     'domain': current_site.domain,
+            #     'msg':msg,
+            #     'uid':uidb64,
+            #     'token':token,
+            # })
 
             to_email = [user.email]
             from_email = settings.SENDER_EMAIL
@@ -475,7 +487,7 @@ class DeleteAccount(APIView):
         confirm_password = request.data.get('confirm_password')
         
         user = self.request.user
-        profile = user.userAssociated.all().first()
+        profile = user.userAssociated
         
         if not user.check_password(current_password):
             response = {
@@ -494,9 +506,19 @@ class DeleteAccount(APIView):
             return Response(response, status=HTTP_400_BAD_REQUEST)
 
         user.status = 'Deleted'
+        user.username=f'Deleted_user_{user.id}'
+        user.fullname=f'Deleted_user_{user.id}'
         user.save()
         user.refresh_from_db()
-
+        UserFollowing.objects.filter(user_id=profile).delete()
+        UserFollowing.objects.filter(following_user_id=profile).delete()
+        profile_obj=Profile.objects.get(user=user)
+        if profile_obj.avatar:
+            if os.path.isfile(profile_obj.avatar.path):
+                os.remove(profile_obj.avatar.path)
+        
+        profile_obj.avatar.delete()
+        profile_obj.save()
         token = Token.objects.get(user=user).delete()
 
         response = {

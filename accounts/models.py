@@ -12,7 +12,7 @@ from django.template.loader import render_to_string
 from django.template.defaultfilters import slugify
 
 from django.conf import settings
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save,post_delete
 from django.dispatch import receiver
 from rest_framework.authtoken.models import Token
 from collectanea.globals import USER_STATUS
@@ -21,6 +21,7 @@ from questions.keywords_models import Keywords
 from .validators import username_validator, bio_validator, avatar_validator
 
 import requests
+from questions.models import Category
 
 class UserManager(BaseUserManager):
     """
@@ -84,7 +85,7 @@ class User(PermissionsMixin, AbstractBaseUser):
     
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
-    # Permission fields
+    # Permiss[{"key":"password","value":"abcd@123","type":"text"}]ion fields
     is_active = models.BooleanField(default=True)
     is_staff = models.BooleanField(default=False) # a admin user; non super-user
     is_admin = models.BooleanField(default=False) # a superuser
@@ -95,6 +96,12 @@ class User(PermissionsMixin, AbstractBaseUser):
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['username',] # Email & Password are required by default.
 
+    def save(self, *args, **kwargs):
+        if self.status == 'Blocked' or self.status == 'Deleted':
+            self.is_active = False
+        else:
+            self.is_active = True
+        super(User, self).save(*args, **kwargs)
 
     def get_fullname(self):
         # The user is identified by their email address
@@ -171,7 +178,7 @@ class Profile(models.Model):
     avatar = models.ImageField(upload_to = 'Profiles/', blank=True, null=True, validators=[avatar_validator])  # User Profile Picture
     slug = models.SlugField(blank=True, null=True)
     bio = models.CharField(max_length=140, blank=True, null=True, validators=[bio_validator]) 
-    MyInterest = models.ManyToManyField(Keywords, related_name="userInterests", blank=True)
+    MyInterest = models.ManyToManyField(Category, related_name="userInterests", blank=True)
     websites = models.ManyToManyField(Websites, related_name="userWebsites", blank=True)
     profession = models.ForeignKey(ProfessionList, on_delete=models.CASCADE, related_name='userProfession', null=True)
     followers_count = models.PositiveIntegerField(default=0)
@@ -187,7 +194,10 @@ class Profile(models.Model):
         return f'{self.fullname} - {self.user.email}' 
 
     def save(self, *args, **kwargs):
-        self.slug = slugify( str(self.user.username) + self.fullname )
+        if self.fullname:
+            self.slug = slugify( str(self.user.username) + str(self.fullname)  )
+        else:
+            self.slug = slugify( str(self.user.username) ) 
         # self.websites.user_id  = self.user.id
         super(Profile,self).save(*args,**kwargs)
 
@@ -203,4 +213,4 @@ class UserFollowing(models.Model):
         ordering = ["-created"]
 
     def __str__(self):
-        f"{self.user_id} follows {self.following_user_id}"
+        return f"{self.user_id} follows {self.following_user_id}"

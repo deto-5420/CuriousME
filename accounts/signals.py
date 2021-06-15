@@ -1,13 +1,14 @@
 import random
 import string
 from django.conf import settings
-from django.db.models.signals import post_save
+from django.db.models.signals import post_save,post_delete
 from django.dispatch import receiver
+from django.db.models import F
 
 from rest_framework.authtoken.models import Token
 
 from answers.models import Answer
-from accounts.models import Profile
+from accounts.models import Profile,UserFollowing
 from questions.models import Question, Category
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
@@ -27,29 +28,33 @@ def create_auth_token(sender, instance=None, created=False, **kwargs):
 #         instance.save()
 
 
-@receiver(post_save, sender=Answer)
-def update_total_response(sender, instance=None, created=False, **kwargs):
-    """
-    total_answers count for a user will be increased whenever a new 
-    answer object is created, and will be decreased when admin deletes
-    the answer.
-    Category count will also be increased.
-    """
-
-    profile = instance.user_id
-
+@receiver([post_save, post_delete], sender=UserFollowing)
+def increment_follow_count(instance, created=False, **kwargs):
     if created:
-        # profile.total_responses += 1
-        instance.question_id.category.total_answers += 1
-        instance.question_id.category.save()
-
+        instance.user_id.followings_count += 1
+        instance.following_user_id.followers_count += 1
+        instance.user_id.save()
+        instance.following_user_id.save()
+        # Profile.objects.filter(
+        #     user=instance.following_user_id
+        # ).update(
+        #     followers_count=F('followers_count') + 1
+        # )
     else:
-        if instance.status == 'admin_deleted':
-            # profile.total_responses -= 1
-            instance.question_id.category.total_answers -= 1
-            instance.question_id.category.save()
-
-    profile.save()
+        instance.user_id.followings_count -= 1
+        instance.following_user_id.followers_count -= 1
+        instance.user_id.save()
+        instance.following_user_id.save()
+        # Profile.objects.filter(
+        #     user=instance.user_id
+        # ).update(
+        #     followings_count=F('followings_count') -1
+        # )
+        # Profile.objects.filter(
+        #     user=instance.following_user_id
+        # ).update(
+        #     followers_count=F('followers_count') -1
+        # )
 
 # @receiver(post_save, sender=Question)
 # def update_total_questions(sender, instance=None, created=False, **kwargs):

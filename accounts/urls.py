@@ -8,7 +8,7 @@ from .views import (
 
 from .profile_views import (
                 UpdateInterests, GetMyProfile, EditProfile,
-                GetUserProfile
+                GetUserProfile, AddUpdateUrl, DeleteWebUrl, GetFollowersList, GetFollowingsList, ToggleFollowingView, getPopularUsers
             )
 
 from .social_views import (
@@ -41,5 +41,12 @@ urlpatterns = [
     path('get-my-profile/', GetMyProfile.as_view(), name="GetMyProfile"),
     path('edit-profile/', EditProfile.as_view(), name="EditProfile"),
     path('get-user-profile/', GetUserProfile.as_view(), name="GetUserProfile"),
+    path('add-update-url/', AddUpdateUrl.as_view(), name="AddUpdateUrl"),
+    path('delete-web-profile/', DeleteWebUrl.as_view(), name="DeleteWebUrl"),
+    path('get-followers-list/', GetFollowersList.as_view(), name="GetFollowersList"),
+    path('get-followings-list/', GetFollowingsList.as_view(), name="GetFollowingsList"),
+    path('toggle-following-view/', ToggleFollowingView.as_view(), name="GetFollowingsList"),
+    path('get-Popular-Users/', getPopularUsers.as_view(), name="getPopularUsers")
+
 
 ]
