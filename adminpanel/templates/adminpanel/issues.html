@@ -1,0 +1,117 @@
+{% extends 'adminpanel/base.html' %}
+
+{% load static %}
+
+{% block title %}Settings{% endblock %}
+
+{% block page_heading %}
+
+<div>
+    <div class="page-title-heading">
+    Issues</div>
+    <div class="page-title-subheading">This is a dedicated Admin dashboard for Collectanea Content Supervisors
+
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block dashboard %}
+
+<div class="row">
+    <div class="col-lg-12">
+        <div class="main-card mb-2 card">
+            <h5 class="card-title m-1">
+                <div class="row m-2">
+                    <div class="col-md-2">
+                        User
+                    </div>
+                    <div class="col-md-2">
+                        Title
+                    </div>
+                    <div class="col-md-3">
+                        Description
+                    </div>
+                    <div class="col-md-2">
+                        Image
+                    </div>
+                    <div class="col-md-1">
+                        Status
+                    </div>
+                    <div class="col-md-2">
+                        Actions
+                    </div>
+                </div>
+            </h5>
+            {% for issue in issues %}
+            <div class="row m-2">
+                <div class="col-md-2">
+                    {{issue.user}}
+                </div>
+                <div class="col-md-2">
+                    {{issue.title}}
+                </div>
+                <div class="col-md-3">
+                    {{issue.description}}
+                </div>
+                <div class="col-md-2">
+                    <a href="{{issue.image.url}}">
+                    <img src="{{issue.image.url}}" alt="" width="100px" height="90px"></a>
+                </div>
+                <div class="col-md-1">
+                    {{issue.status|title}}
+                </div>
+                <div class="col-md-2">
+                    <a href="{% url 'adminpanel:issue_action' 0 issue.id %}">
+                    <button class="mb-2 btn btn-success">Resolved
+                    </button></a>
+                    <a href="{% url 'adminpanel:issue_action' 1 issue.id %}">
+                    <button class="mb-2 btn btn-danger">Discard
+                    </button></a>
+                </div>
+            </div>
+            {% if not forloop.last %}
+            <hr style="
+                border: 0;
+                height: 1px;
+                background: #333;
+                background-image: linear-gradient(to right, #ccc, #333, #ccc);
+                margin-right: 20px;
+                margin-left: 20px;
+            ">
+            {% endif %}
+            {% empty %}
+                <center class="m-1 mb-2">No Pending Issues!</center>
+            {% endfor %}
+        </div>
+        <div class="d-block text-center card-footer">
+            {% if issues.has_other_pages %}
+            <ul class="pagination">
+                {% if issues.has_previous %}
+                    <li class="page-item"><a href="?page={{ issues.previous_page_number }}" class="page-link" aria-label="Previous"><span aria-hidden="true">«</span><span class="sr-only">Previous</span></a></li>
+                {% else %}
+                    <!-- <li class="page-item" disable><a href="" class="page-link" aria-label="Previous"><span aria-hidden="true">«</span><span class="sr-only">Previous</span></a></li> -->
+                {% endif %}
+
+                {% for i in issues.paginator.page_range %}
+                  {% if users.number == i %}
+                    <li class="page-item active"><span>{{ i }}<span class="sr-only">(current)</span></span></li>
+                  {% else %}
+                    <li><a href="?page={{ i }}">{{ i }}</a></li>
+                  {% endif %}
+                {% endfor %}
+                    <!-- <li class="page-item"><a href="javascript:void(0);" class="page-link">1</a></li> -->
+
+                {% if issues.has_next %}
+                  <li class="page-item"><a href="?page={{ issues.next_page_number }}" class="page-link" aria-label="Next"><span aria-hidden="true">»</span><span class="sr-only">Next</span></a></li>
+                {% else %}
+                  <!-- <li class="page-item" disable><a href="javascript:void(0);" class="page-link" aria-label="Next"><span aria-hidden="true">»</span><span class="sr-only">Next</span></a></li> -->
+                {% endif %}
+            </ul>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% endblock %}

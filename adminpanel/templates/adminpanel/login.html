@@ -1,4 +1,5 @@
 {% load static %}
+{% load socialaccount %}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -35,7 +36,7 @@
 					{% csrf_token %}
 
 					<span class="login100-form-title">
-						Admin Login
+						Collectanea Admin Login
 					</span>
 					{% if messages %}
 					{% for message in messages %}
@@ -69,25 +70,25 @@
 						</button>
 					</div>
 
-					<div class="text-center p-t-12">
+					<div id="forgot" class="text-center p-t-12">
 						<span class="txt1">
 							Forgot
 						</span>
-						<a class="txt2" href="#">
-							Username / Password?
-						</a>
+						<span class="txt2">
+							Password?
+						</span>
 					</div>
 
 					<div class="text-center p-t-50">
 						<span class="txt1">
 							Or you can Login with
 						</span>
-						<a class="txt2" href="#">
+						<a class="txt2" href="{% provider_login_url 'google' process='login' %}">
 							<img src="{% static 'moderatorpanel/login/icons/google.svg' %}" height="25px" width="25px" style="margin: 5px"> </a>
-						<a class="txt2" href="#">
+						<!-- <a class="txt2" href="#">
 							<img src="{% static 'moderatorpanel/login/icons/facebook.svg' %}" height="25px" width="25px" style="margin: 5px"> </a>
 						<a class="txt2" href="#">
-							<img src="{% static 'moderatorpanel/login/icons/twitter.svg' %}" height="25px" width="25px" style="margin: 5px"> </a>
+							<img src="{% static 'moderatorpanel/login/icons/twitter.svg' %}" height="25px" width="25px" style="margin: 5px"> </a> -->
 					</div>
 
 					
@@ -95,12 +96,6 @@
 			</div>
 		</div>
 	</div>
-	
-
-	<div>Icons made by <a href="https://www.flaticon.com/authors/freepik" title="Freepik">Freepik</a> from <a href="https://www.flaticon.com/" title="Flaticon">www.flaticon.com</a></div>
-
-	
-
 	
 <!--===============================================================================================-->	
 	<script src="{% static 'moderatorpanel/login/vendor/jquery/jquery-3.2.1.min.js' %}"></script>
@@ -119,5 +114,36 @@
 <!--===============================================================================================-->
 	<script src="{% static 'moderatorpanel/login/js/main.js' %}"></script>
 
+	<script>
+		function validateEmail($email) {
+		   var emailReg = /^([\w-\.]+@([\w-]+\.)+[\w-]{2,6})?$/;
+		   return ($email.length > 0 && emailReg.test($email));
+	   }
+
+	   $("#forgot").on('click', function(){
+
+		   if(validateEmail($("input[name='email']").val())){
+			   $.ajax({
+				   url: '/api/auth/request-password-reset/',
+				   type: 'post',
+				   data: {
+					   'email':$("input[name='email']").val()
+				   },
+				   dataType:'json',
+				   success: function(data){
+					   alert(data['message']);
+				   },
+				   error: function(data){
+					   alert(data.responseJSON['error']);
+				   }
+			   })
+		   }
+		   else{
+			   alert("Enter valid email in the email textarea")
+		   }
+	   })
+		   
+   </script>	
+	
 </body>
 </html>

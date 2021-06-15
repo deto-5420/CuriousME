@@ -1,0 +1,144 @@
+{% extends 'adminpanel/base.html' %}
+
+{% load static %}
+
+{% block title %}Question detail page {% endblock %}
+
+{% block page_heading %}
+
+<div>
+  Question detail page 
+    <div class="page-title-subheading">This is a dedicated Moderator dashboard for Collectanea Content writers.
+    </div>
+</div>
+
+{% endblock %}
+
+
+{% block dashboard %}
+
+  <div class="row">
+  	
+  	<div class="col-md-12">
+  		
+  		<div class="main-card mb-3 card" style="position:relative; background-color: ;">
+        <div class="card-body">
+            <h5 class="card-title" 
+                style="overflow: hidden;
+                      text-overflow: ellipsis;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 3;
+                      -webkit-box-orient: vertical;
+                      font-size: 20px;
+                      text-transform: none;">
+            
+              {{question.content|title}} 
+            </h5>
+            
+          <p class="card-subtitle">
+            <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.category}}</div>
+
+            {% for keyword in question.keywords_associated.all %}
+            <div class="mb-2 mr-2 badge badge-pill badge-info">{{keyword}}</div>
+                {% endfor %}                
+          </p>
+
+            <div class="widget-content p-0">
+                <div class="widget-content-wrapper">
+                  <div class="widget-content-left">
+                    <div class="btn-group">
+                      <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                        <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+                      </a>
+                                
+                    </div>
+                  </div>
+                  <div class="widget-content-left  ml-3 header-user-info">
+                    <div class="widget-heading">
+                      {{question.author}}
+
+                    </div>
+                    <div class="widget-subheading">
+                      {{question.author.profession}}
+                    </div>
+
+                  </div>
+                        
+                </div>
+                <div class="mt-3 ml-2" style="position: relative;">
+                  <p style="">
+                      Total Answers : {{question.answer_count}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                    
+                      <i class="fa fa-heart m-1" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{question.like_count}}
+                    <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-up"></i> {{question.upvote_count}}
+                    <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.downvote_count}}
+                  </p>
+                </div>
+            </div>  
+            <p>
+              {% for file in files %}
+                <a href="{{file.file.url}}">
+                    <li>{{file.file.name}}</li>
+                </a>
+              {% endfor %}
+            </p>
+            
+          {% for answer in answers %}
+          <div class="main-card mb-3 ml-5 card" style="background-color: #f2f2f2;">
+            <div class="card-body">
+              <a href="" style="text-decoration: none; color: black;">  
+            	<img width="30" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">&nbsp;
+              {{answer.user_id.fullname|title}}
+              </a>
+
+              <p class="ml-4">
+                  {% if not answer.status == 'deleted' %}
+                	 {{answer.content}}
+                  {% else %}
+                    <i>Answer Deleted</i>
+                  {% endif %}
+                
+              </p> 
+            </div>
+            {% if not replies.count == 0 %}
+            <div class="container">
+            	<div id="exampleAccordion" data-children=".item">
+            	<div class="item mb-3">
+                {% for reply in replies %}	
+                <p>
+                  <div class="main-card ml-5 card" style="background-color: #e2e2e2; ">
+                    <div class="card-body">
+                      <a href="" style="text-decoration: none; color: black;">  
+                    <img width="30" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">&nbsp;{{ reply.user_id.fullname|title }}
+                    </a>
+                    
+                    <p class="ml-4">
+                      {% if not reply.status == 'deleted' %}
+                        {{reply}}
+                      {% else %}
+                        <i>Reply Deleted</i>
+                      {% endif %}
+                    </p>
+                    <div style="float: right;">
+                      <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{reply.like_count}}
+                      <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{reply.dislike_count}}
+                    </div>
+                    </div>
+                  </div>
+                </p>
+                {% endfor %}
+              </div>
+            </div>
+            </div>
+            {% endif %}
+    	    </div>
+            {% empty %}
+             <center> Oops No Answer! </center>
+            {% endfor %}
+        </div>
+    </div>
+  </div>
+
+</div>	
+
+{% endblock %}

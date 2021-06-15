@@ -49,9 +49,29 @@
                             <div class="widget-content p-0">
                                 <div class="widget-content-wrapper">
                                     <div class="widget-content-left mr-3">
-                                        <div class="widget-content-left">
-                                            <img width="40" class="rounded-circle" src="" alt="">
-                                        </div>
+                                        {% if user.user.is_moderator %}
+                                        <a href="{% url 'adminpanel:moderator_profile' user.id %}">
+                                            {% if profile.avatar.url %}
+                                            <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                                                <img width="42" class="rounded-circle" src="{{profile.avatar.url}}" alt="">
+                                            </a>
+                                            {% else %}
+                                            <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                                                <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                                            </a>
+                                            {% endif %}
+                                        </a>
+                                        {% else %}
+                                        {% if profile.avatar.url %}
+                                        <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                                            <img width="42" class="rounded-circle" src="{{profile.avatar.url}}" alt="">
+                                        </a>
+                                        {% else %}
+                                        <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                                            <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                                        </a>
+                                        {% endif %}
+                                        {% endif %}
                                     </div>
                                     <div class="widget-content-left flex2">
                                         <div class="widget-heading">{{user.fullname}}</div>
@@ -186,68 +206,8 @@
 
 {% endif %}
 
-
 {% endblock %}
 
 {% block js %}
-
-<script type="text/javascript">
-  
-  const search_input = $("#search-input")
-  const questions = $('#replaceable-content')
-  const endpoint = "{% url 'moderator:get_questions' 0 %}"
-  const delay_by_in_ms = 700
-  let scheduled_function = false
-
-  let ajax_call = function (endpoint, request_parameters) {
-      $.getJSON(endpoint, request_parameters)
-          .done(response => {
-              // fade out the questions, then:
-              questions.fadeTo('slow', 0).promise().then(() => {
-                  // replace the HTML contents
-                  questions.html(response['html_from_view.content'])
-                  // fade-in the div with new contents
-                  questions.fadeTo('slow', 1)
-              })
-          })
-  }
-
-
-  search_input.on('keyup', function () {
-
-      const request_parameters = {
-          q: $(this).val() // value of search_input: the HTML element with ID search-input
-      }
-
-      // if scheduled_function is NOT false, cancel the execution of the function
-      if (scheduled_function) {
-          clearTimeout(scheduled_function)
-      }
-
-      // setTimeout returns the ID of the function to be executed
-      scheduled_function = setTimeout(ajax_call, delay_by_in_ms, endpoint, request_parameters)
-  })
-
-
- $("#search-input").change(function(){
-
-    var search_input = $(this).val();
-
-    $.ajax({
-      url: '{% url "moderator:get_questions" 0 %}'
-      data:{
-        'q':search_input
-      },
-      dataType: 'json',
-      success: function(data){
-        if(data.questions){
-
-        }
-      }
-    })
-
- })
-
-</script>
 
 {% endblock %}

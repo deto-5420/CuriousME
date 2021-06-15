@@ -1,4 +1,6 @@
-<form method="post" enctype="multipart/form-data" action="{% url 'moderator:edit_question' form.instance.pk %}" class="js-question-edit-form">
+{% load static %}
+
+<form method="post" enctype="multipart/form-data" action="{% url 'adminpanel:edit_question' question_form.instance.pk %}" class="js-question-edit-form">
   {% csrf_token %}
   <div class="modal-header">
     <h4 class="modal-title">Edit Question</h4>
@@ -9,10 +11,9 @@
   </div>
   <div class="modal-body">
    
-    {% include 'moderatorpanel/qform.html' %}
-
+    {% include 'adminpanel/qform.html' %}
    
-    {{options}}
+    
   </div>
   <div class="modal-footer">
     <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
@@ -20,7 +21,6 @@
   </div>
 </form>
 
-{% block js %}
 <script>
   $("#id_keywords_associated").select2({
     tags:true,
@@ -46,5 +46,128 @@
       cache: true,
     }
 });
+
+
+var f = 0;
+
+function add_choice(){
+  if(f==0){
+    console.log("clicked")
+    document.getElementById('choice-3').style.display = 'block';
+    f=1;
+  }
+  else{
+    document.getElementById('choice-4').style.display = 'block';
+    document.getElementById('add-choice').style.display = 'none'
+  }
+}
+
+function lengthRange()
+{  	
+//    console.log($(".select2-search__field").val());
+   var userInput = $(".select2-search__field").val(); 
+   if(userInput.match(/[0-9]\d*/)){
+        alert("Please do not input no. ");  	
+        $(".select2-search__field").val('');
+        return false;
+   }
+   if(userInput.length <= 20)
+      {  	
+        return true;  	
+      }
+   else
+      {  	
+        alert("Please input less than " +20+ " characters");  	
+        $(".select2-search__field").val('');
+        return false;  	
+      }  
+}
+
+$(document).on('keyup', '.select2-search__field', function (e) {
+    if(lengthRange()){
+        if (e.which === 13) {
+            console.log('Pressed enter!');
+            console.log("Selected value is: "+$("#id_keywords_associated:last").select2("val").slice(-1)[0]);
+            keyword = $("#id_keywords_associated").select2("val").slice(-1)[0]
+            $.ajax({
+            url: '{% url "moderator:return_keyword" %}',
+            type:'post',
+            data:{
+                'keyword':keyword
+            },
+            dataType:'json',
+            success: function(data){
+                console.log("success");
+                console.log(data);
+            }
+        });
+    }
+    }
+});
+
+$(".select2-search__field").on({
+  keydown: function(e) {
+    if (e.which === 32)
+      return false;
+  },
+  change: function() {
+    this.value = this.value.replace(/\s/g, "");
+  }
+});
+
+
+$(function() {
+  // Multiple images preview in browser
+  // preview = $("#f_preview");  
+  var imagesPreview = function(input, preview) {
+    $("#f_preview").empty();
+      if (input.files) {
+          var filesAmount = input.files.length;
+          console.log('total:',filesAmount)
+          for (var i = 0; i < filesAmount; i++) {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+              // var file = event.target.files;
+
+              var file = input.files;
+              // console.log(input.file[i].name);
+              console.log(file);
+              console.log('i',i)
+              var fname = file[0].name;
+              console.log(fname);
+              var extension = fname.slice((Math.max(0, fname.lastIndexOf(".")) || Infinity) + 1);
+              if (extension == 'jpeg' || extension == 'jpg' || extension == 'png' || extension == 'svg'){
+                $($.parseHTML('<img>')).attr('src', event.target.result).attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }
+              else if(extension == 'pdf'){
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/pdf.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }
+              else if(extension == 'txt'){
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/txt.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              } 
+              // else if(extension === 'ppt'){
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/ppt.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }else if(extension === 'doc'){
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/doc.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }else if(extension === 'xlsx'){
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/xlsx.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }else {
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/document.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }
+
+            }
+            reader.readAsDataURL(input.files[i]);
+            
+          }
+          // $(".image_preview").css("height", "120px");
+          // $(".image_preview").css("width", "100px");
+      }
+
+  };
+  var file = document.getElementById("id_file");
+      file.onchange = function() {
+      imagesPreview(this, '#f_preview');
+  };
+});
+
 </script>
-{% endblock %}

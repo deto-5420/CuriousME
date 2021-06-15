@@ -19,119 +19,44 @@
 
   <div class="row">
 
-  	
+{% for question in questions %}  	
   	<div class="col-md-4 col-xs-12">
   		
   		<div class="main-card mb-3 card" style="position:relative; background-color: ;">
-        <div class="card-body">
-          <!-- <div class="row"> -->
-            <!-- <h5 class="card-title" style="overflow: hidden;
-                      text-overflow: ellipsis;
-                      display: -webkit-box;
-                      -webkit-line-clamp: 3;
-                      -webkit-box-orient: vertical;
-                      font-size: 20px;
-                      text-transform: none;"> -->
-            <!-- <div class="col-md-3" style="padding-right: 10px;">
-                Question
-                <img width="42" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
-              </div>
-            <div class="col-md-9"></div>
-              <p>Which one is more famous? </p>
-              
-            </h5> -->
-            <!-- </div> -->
-          
+        <div class="card-body">          
             <div class="row">
               <div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-size: 15px; font-weight: 600;">
                 Question
                 <img width="42" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
               </div>
               <div class="col-md-9 col-xs-9 mt-2" style="padding: 0px; font-size: 15px; font-weight: 600;">
-                <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #4c4c4c; float: right; display: inline-block;">
-                  According To Their Story, Hello Kitty Is Introducing Japan To Her American Boyfriend Dear Daniel.
+                <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #4c4c4c; display: inline-block;">
+                  {{question.content}}
                 </a>
               
               </div>
             </div>
 
-            <!-- <div class="widget-content p-0">
-                <div class="widget-content-wrapper">
-                  <div class="widget-content-left">
-                    <div class="btn-group">
-                      <a>
-                        <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
-                      </a>
-                                
-                    </div>
-                  </div>
-                  <div class="widget-content-left ml-3 header-user-info">
-                    <div class="widget-heading">
-                      SHREYASH SRIVASTAVA - shreyash@dev.com
-
-                    </div>
-                    <div class="widget-subheading">
-                      Django Developer
-                    </div>
-
-                  </div>
-                        
-                </div>
-                </div> -->
             <p></p>
-            <!-- <div style="float: right;">
-              <button class="btn mr-2 btn-warning" title="Approve as Spammed">Approve
-                <i class="fa fa-fw" aria-hidden="true"></i>
-              </button>  
-              <a href=""> 
-              <button class="btn btn-danger" title="Reject">Reject
-                <i class="fa fa-fw" aria-hidden="true"></i>
-              </button>  
-              </a>
-            </div> -->
-            
-             <div class="row ml-1">
-             	<div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-weight: 550;">
-             		Answer
-             		<img width="40" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
-             	</div>
-             	<div class="col-md-9 col-xs-9 mt-2" style="padding: 0px;; font-weight: 550;">
-             		<p>According To Their Story, Hello Kitty Is Introducing Japan To Her American Boyfriend Dear Daniel.</p>
-             	</div>
-
-             </div>
-               <!-- <div style="float: right;">
-                <button class="btn mr-2 btn-warning" title="Approve as Spammed">Approve
-                  <i class="fa fa-fw" aria-hidden="true"></i>
-                </button>  
-                <a href=""> 
-                <button class="btn btn-danger" title="Reject">Reject
+  
+             <!-- Spammed By: Someone -->
+             <div style="float: right;">
+              <form method="POST" action="{% url 'adminpanel:spammed_question_action' question.id 0 %}">
+                {% csrf_token %}
+                <a onclick="this.parentNode.submit();">
+                  <button class="btn ml-2 mb-1 mr-2 btn-warning" title="Approve as Spammed">Approve
+                    <i class="fa fa-fw" aria-hidden="true"></i>
+                  </button>  
+                </a>
+              </form>
+              <form method="POST" action="{% url 'adminpanel:spammed_question_action' question.id 1 %}">
+                {% csrf_token %}
+                <a onclick="this.parentNode.submit();"> 
+                <button class="btn ml-2 mb-1 btn-danger" title="Reject">Reject
                   <i class="fa fa-fw" aria-hidden="true"></i>
                 </button>  
                 </a>
-              </div> -->
-            
-             
-             <div class="row ml-3">
-             	<div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-weight: 450;">
-             		Reply
-             		<img width="36" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
-             	</div>
-             	<div class="col-md-9 col-xs-9 mt-2" style="padding: 0px; font-weight: 450;">
-             		<p>According To Their Story, Hello Kitty Is Introducing Japan To Her American Boyfriend Dear Daniel.</p>
-             	</div>
-             	
-             </div>
-             <!-- Spammed By: Someone -->
-             <div style="float: right;">
-              <button class="btn mr-2 btn-warning" title="Approve as Spammed">Approve
-                <i class="fa fa-fw" aria-hidden="true"></i>
-              </button>  
-              <a href=""> 
-              <button class="btn btn-danger" title="Reject">Reject
-                <i class="fa fa-fw" aria-hidden="true"></i>
-              </button>  
-              </a>
+              </form>
             </div>
             
             
@@ -139,8 +64,140 @@
   	</div>
 
   </div>
+{% endfor %}
 
-  
+{% for answer in answers %}
+
+<div class="col-md-4 col-xs-12">
+  		
+  <div class="main-card mb-3 card" style="position:relative; background-color: ;">
+    <div class="card-body">          
+        <div class="row">
+          <div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-size: 15px; font-weight: 600;">
+            Question
+            <img width="42" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+          </div>
+          <div class="col-md-9 col-xs-9 mt-2" style="padding: 0px; font-size: 15px; font-weight: 600;">
+            <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #4c4c4c; display: inline-block;">
+              {{answer.question_id.content}}
+            </a>
+          
+          </div>
+        </div>
+
+        <p></p>
+        
+         <div class="row ml-1">
+           <div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-weight: 550;">
+             Answer
+             <img width="40" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+           </div>
+           <div class="col-md-9 col-xs-9 mt-2" style="padding: 0px;; font-weight: 550;">
+             <p>{{answer}}</p>
+           </div>
+
+         </div>  
+
+         <!-- Spammed By: Someone -->
+         <div style="float: right;">
+          <form method="POST" action="{% url 'adminpanel:spammed_answer_action' answer.id 0 %}">
+            {% csrf_token %}
+            <a onclick="this.parentNode.submit();">
+              <button class="btn ml-2 mb-1 mr-2 btn-warning" title="Approve as Spammed">Approve
+                <i class="fa fa-fw" aria-hidden="true"></i>
+              </button>  
+            </a>
+          </form>
+          <form method="POST" action="{% url 'adminpanel:spammed_answer_action' answer.id 1 %}">
+            {% csrf_token %}
+            <a onclick="this.parentNode.submit();"> 
+            <button class="btn ml-2 mb-1 btn-danger" title="Reject">Reject
+              <i class="fa fa-fw" aria-hidden="true"></i>
+            </button>  
+            </a>
+          </form>
+        </div>
+        
+        
+    </div>
+</div>
+
+</div>
+
+{% endfor %}
+
+
+{% for reply in replies %}
+
+<div class="col-md-4 col-xs-12">
+  		
+  <div class="main-card mb-3 card" style="position:relative; background-color: ;">
+    <div class="card-body">          
+        <div class="row">
+          <div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-size: 15px; font-weight: 600;">
+            Question
+            <img width="42" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+          </div>
+          <div class="col-md-9 col-xs-9 mt-2" style="padding: 0px; font-size: 15px; font-weight: 600;">
+            <a href="" target="_blank" rel="noopener noreferrer" style="text-decoration: none; color: #4c4c4c; display: inline-block;">
+              {{reply.answer.question_id.content}}
+            </a>
+          
+          </div>
+        </div>
+
+        <p></p>
+        
+         <div class="row ml-1">
+           <div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-weight: 550;">
+             Answer
+             <img width="40" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+           </div>
+           <div class="col-md-9 col-xs-9 mt-2" style="padding: 0px;; font-weight: 550;">
+             <p>{{reply.answer}}</p>
+           </div>
+
+         </div>            
+         
+         <div class="row ml-3">
+           <div class="col-md-3 col-xs-3 text-center" style="padding-right: 10px; font-weight: 450;">
+             Reply
+             <img width="36" class="rounded-circle mt-2" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
+           </div>
+           <div class="col-md-9 col-xs-9 mt-2" style="padding: 0px; font-weight: 450;">
+             <p>{{reply}}</p>
+           </div>
+        
+         </div>
+
+         <!-- Spammed By: Someone -->
+         <div style="float: right;">
+          <form method="POST" action="{% url 'adminpanel:spammed_reply_action' reply.id 0 %}">
+            {% csrf_token %}
+            <a onclick="this.parentNode.submit();">
+              <button class="btn ml-2 mb-1 mr-2 btn-warning" title="Approve as Spammed">Approve
+                <i class="fa fa-fw" aria-hidden="true"></i>
+              </button>  
+            </a>
+          </form>
+          <form method="POST" action="{% url 'adminpanel:spammed_reply_action' reply.id 1 %}">
+            {% csrf_token %}
+            <a onclick="this.parentNode.submit();"> 
+            <button class="btn ml-2 mb-1 btn-danger" title="Reject">Reject
+              <i class="fa fa-fw" aria-hidden="true"></i>
+            </button>  
+            </a>
+          </form>
+        </div>
+        
+        
+    </div>
+</div>
+
+</div>
+
+{% endfor %}
+
 </div>
 
 

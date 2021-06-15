@@ -2,41 +2,102 @@
 
 {% load static %}
 
-{% block title %}Questions{% endblock %}
+{% block title %}Moderator Profile{% endblock %}
 
 {% block page_heading %}
 
 <div>
-    Questions
-    <div class="page-title-subheading">This is an example dashboard created using build-in elements and components.
+    <div class="page-title-heading">
+    {{profile.fullname}}</div>
+    <div class="page-title-subheading">This is a dedicated Admin dashboard for Collectanea Content Supervisors
     </div>
-
 </div>
 
 {% endblock %}
 
-
 {% block dashboard %}
 
-
-
-<!-- <h3 class="">{{ question.status|title }} Question</h3> -->
+<div class="row">
+  <div class="col-md-4">
+    <div class="main-card mb-3 card">
+      <div class="card-body">
+        <h5 class="card-title text-center">
+          <img width="200px" class="rounded-circle" src="/static/moderatorpanel/images/avatars/kayle-kaupanger-AISlI33MYiA-unsplash.jpg">
+        </h5>
+        <p class="text-center">{{profile.fullname|title}}</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-8">
+    <div class="main-card mb-3 card">
+      <div class="card-body"><h5 class=" mt-1">{{profile.fullname|title}}'s Profile <div class="mb-2 mr-2 badge badge-pill badge-info">{{profile.user.status}} </div>
+        <div style="float: right;">
+          <a href=""> 
+            <button class="btn btn-info" title="Reject">Make User
+              <!-- <i class="fa fa-fw" aria-hidden="true"></i> -->
+            </button>  
+          </a>
+          <a href="">
+          <button class="btn btn-warning" title="Approve as Spammed">Block
+            <!-- <i class="fa fa-fw" aria-hidden="true"></i> -->
+          </button>  
+          </a>
+          <a href=""> 
+          <button class="btn btn-danger" title="Reject">Delete
+            <!-- <i class="fa fa-fw" aria-hidden="true"></i> -->
+          </button>  
+          </a>
+          
+        </div>
+      </h5>
+        
+          <table class="mb-0 table table-borderless">
+            <tbody>
+            <tr>
+                <th scope="row">Name:</th>
+                <td>{{profile.fullname|title}}</td>
+            </tr>
+            <tr>
+                <th scope="row">Email:</th>
+                <td>{{profile.user.email}}</td>
+            </tr>
+            <tr>
+                <th scope="row">Profession:</th>
+                <td>{{profile.profession}}</td>
+            </tr>
+            <tr>
+              <th scope="row">Bio:</th>
+              <td>{{profile.bio}}</td>
+            </tr>
+            <tr>
+              <th scope="row">Websites:</th>
+              <td>{% for website in profile.websites.all %}{{website}},{% empty %}Not Added{% endfor %}</td>
+          </tr>
+          <tr>
+            <th scope="row">Interests:</th>
+            <td>{% for interest in profile.MyInterests.all %}{{interest}},{% empty %}Not Added{% endfor %}</td>
+          </tr>
+          <tr>
+            <th scope="row">Followers:</th>
+            <td>{{profile.followers_count}}</td>
+          </tr>
+          <tr>
+            <th scope="row">Following:</th>
+            <td>{{profile.followings_count}}</td>
+          </tr>
+            </tbody>
+          </table>
+          
+      </div>
+      </div>
+    </div>
+  </div>
+</div>
 
 <div class="container">
-  <div class="search-wrapper mb-4 ml-1 active">
-      <div class="input-holder">
-        <form method="GET" action="{{request.path}}" style="text-decoration: none;">
-          <input id="search-input" type="text" class="search-input" placeholder="Type to search" name="search">
-          <button type="submit" class="search-icon" id="search-button"><span></span></button>
-        </form>
-      </div>
-      <!-- <button class="close"></button> -->
-  </div>
 <div class="row">
+  {% for question in questions %}
 
-
-{% for question in questions %}
-{% if question.question_type == 'normal' %}
   <div class = "col col-md-6 col-xl-4"> 
     <div id = "replaceable-content" class="main-card mb-3 card" style="height: 385px; position:relative;">
         <div class="card-body">
@@ -78,32 +139,6 @@
                 
             </p>
 
-            <div class="widget-content p-0">
-              <div class="widget-content-wrapper">
-                <div class="widget-content-left">
-                  <div class="btn-group">
-                    {% if question.author.avatar %}
-                      <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
-                          <img width="42" class="rounded-circle" src="{{question.author.avatar.url}}" alt="">
-                      </a>
-                      {% else %}
-                      <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
-                          <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
-                      </a>
-                      {% endif %}     
-                  </div>
-                </div>
-                <div class="widget-content-left  ml-3 header-user-info">
-                  <div class="widget-heading">
-                    {{question.author.fullname}}
-                  </div>
-                  <div class="widget-subheading">
-                    {{question.author.profession}}
-                  </div>
-                </div>          
-              </div>
-            </div>  
-
             <p></p>
             {% if question.status == 'waiting' %}
             <div style="position: absolute; bottom: 20px; right: 20px;">
@@ -137,23 +172,18 @@
   </div>
   </div>
 
-{% endif %}
-{% endfor %}
- 
-      
-  </div>
 
+{% endfor %}
+</div>
 </div>
 
 
-<!-- For Poll Questions -->
-
-{% regroup options by question as polls %}
+{% regroup options by question as questions %}
 
 <!-- <h3>{{ question.status|title }} Question</h3> -->
 <div class="container">
 <div class="row">
-{% for question in polls %}
+{% for question in questions %}
 
 
   <div class = "col col-md-6 col-xl-4"> 
@@ -221,15 +251,10 @@
               <div class="widget-content-wrapper">
                 <div class="widget-content-left">
                   <div class="btn-group">
-                    {% if profile.avatar.url %}
                     <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
-                        <img width="42" class="rounded-circle" src="{{profile.avatar.url}}" alt="">
+                      <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
                     </a>
-                    {% else %}
-                    <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
-                        <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
-                    </a>
-                    {% endif %}   
+                              
                   </div>
                 </div>
                 <div class="widget-content-left  ml-3 header-user-info">
@@ -241,8 +266,7 @@
                   </div>
                 </div>
               </div>
-            </div> 
-             
+            </div>  
             <p></p>
             {% if question.grouper.status == 'waiting' %}
             <div style="position: absolute; bottom: 20px; right: 20px;">
@@ -278,33 +302,7 @@
     
 {% endfor %}
  
-{% if questions.has_other_pages %}
 
-<div class="d-block text-center card-footer mb-3" style="justify-content: center; align-items: center;">
-    <ul class="pagination text-center">
-      {% if questions.has_previous %}
-          <li class="page-item"><a href="?page={{ questions.previous_page_number }}" class="page-link" aria-label="Previous"><span aria-hidden="true">«</span><span class="sr-only">Previous</span></a></li>
-      {% else %}
-          <!-- <li class="page-item" disable><a href="" class="page-link" aria-label="Previous"><span aria-hidden="true">«</span><span class="sr-only">Previous</span></a></li> -->
-      {% endif %}
-
-      {% for i in questions.paginator.page_range %}
-        {% if questions.number == i %}
-          <li class="page-item active" disable style="color: darkslategrey; padding: 8px 12px; margin-top: -1px; font-size: 15px;"><span>{{ i }}<span class="sr-only">(current)</span></span></li>
-        {% else %}
-          <li><a href="?page={{ i }}">{{ i }}</a></li>
-        {% endif %}
-      {% endfor %}
-          <!-- <li class="page-item"><a href="javascript:void(0);" class="page-link">1</a></li> -->
-
-      {% if questions.has_next %}
-        <li class="page-item"><a href="?page={{ questions.next_page_number }}" class="page-link" aria-label="Next"><span aria-hidden="true">»</span><span class="sr-only">Next</span></a></li>
-      {% else %}
-        <!-- <li class="page-item" disable><a href="javascript:void(0);" class="page-link" aria-label="Next"><span aria-hidden="true">»</span><span class="sr-only">Next</span></a></li> -->
-      {% endif %}        
-    </ul>
-</div>
-{% endif %}
 </div>
 
 </div>

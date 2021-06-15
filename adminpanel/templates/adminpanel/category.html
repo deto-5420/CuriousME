@@ -33,8 +33,9 @@
   	<div class="col-md-3">
   		<div class="main-card mb-3 card" style="background-color: {{category.color}}; ">
           <div class="card-body">
+            {% if category.category_svg %}
             <img width="30" class="rounded-circle" src="{{category.category_svg.url}}" alt="">&nbsp;
-            
+            {% endif %}
             <p> 
     				<!-- <a href="{% url 'moderator:get_questions_by_category' category.id %}" style="text-decoration: none; color: #191919;"> -->
             <h5><b>
@@ -70,35 +71,6 @@
  
 
 {% endblock %}
-
-
-<!-- 
-<script type="text/javascript">
-$(function () {
-
-  $(".js-create-category").click(function () {
-    var btn = $(this);
-    $.ajax({
-      url: btn.attr("data-url"),
-      type: 'get',
-      dataType: 'json',
-      beforeSend: function () {
-        $("#modal-book").addClass("show");
-        $("#modal-book").css("display", "block");
-        $("#modal-book").removeAttr("aria-hidden");
-        $("#modal-book").attr("aria-modal", "true");
-      },
-      success: function (data) {
-        console.log("fdsabflkh")
-        $("#modal-book .modal-content").html(data.html_form);
-      }
-    });
-  });
-  
-});
-</script> -->
-
-
 
 {% block js %}
 

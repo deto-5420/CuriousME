@@ -1,0 +1,34 @@
+
+
+{% for reply in replies_obj %}
+
+  <p>
+    <div class="main-card ml-5 card" style="background-color: #e2e2e2; ">
+      <div class="card-body">
+        <div class="card-body">
+          <div>
+            {% if answer.user_id.avatar %}
+                <img width="32" class="rounded-circle" src="{{reply.user_id.avatar.url}}" alt="">
+            {% else %}
+                <img width="32" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+            {% endif %}
+            {{ reply.user_id.fullname|title }}
+            <span style="font-style: italic;">
+              Posted {{reply.created_at|timesince}} ago.
+            </span>
+            {% if reply.status == 'spammed' %}
+            <span style="float: right;">"This reply is marked as spammed"</span>
+            {% endif %}
+          </div>
+      <p class="ml-4">
+        {{reply}}
+      </p>
+      <div style="float: right;">
+        <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{reply.like_count}}
+        <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{reply.dislike_count}}
+      </div>
+      </div>
+    </div>
+  </p>
+
+{% endfor %}
