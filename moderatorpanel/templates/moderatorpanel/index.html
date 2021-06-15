@@ -79,77 +79,195 @@
 <header><h4>Recent Questions</h4></header>
 
 <div class="row">
-{% for question in recent_questions %}
-  <div class = "col col-md-6 col-xl-4">  
-  	<div class="main-card mb-3 card">
-        <div class="card-body">
 
-            <div class="dropdown d-inline-block mt-1" style="position: absolute; top:0px; right: 0px;">
-                <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"></button>
-                <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu" x-placement="bottom-start" style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(0px, 33px, 0px);">
-
-                        <button type="button" tabindex="0" class="dropdown-item js-edit-question" data-toggle="modal" data-target="#modal-book"  data-url="{% url 'moderator:edit_question' question.id %}">Edit</button>
-                    <a href="{% url 'moderator:delete_question' question.id %}">
-                        <button type="button" tabindex="0" class="dropdown-item" data-toggle="modal" data-target=".bd-example-modal-sm">Delete</button>
-                    </a>
+    {% for question in recent_questions %}
+    {% if question.question_type == 'normal' %}
+    
+      <div class = "col col-md-6 col-xl-4"> 
+        <div id = "replaceable-content" class="main-card mb-3 card" style="height: 385px; position:relative;">
+            <div class="card-body">
+              {% if question.author.user == request.user %}
+              {% if question.status != 'deleted' %}
+              <div class="dropdown d-inline-block mt-1" style="position: absolute; top:0px; right: 0px;">
+                    <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"></button>
+                    <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu" x-placement="bottom-start" style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(0px, 33px, 0px);">
+                      <!-- <a href="{% url 'moderator:edit_question' question.id %}" style="text-decoration: none;"> -->
+                            <button type="button" tabindex="0" class="dropdown-item js-edit-question" data-toggle="modal" data-target="#modal-book"  data-url="{% url 'moderator:edit_question' question.id %}">Edit</button>
+                          <a href="{% url 'moderator:delete_question' question.id %}" style="text-decoration: none;">
+                            <button type="button" tabindex="0" class="dropdown-item">Delete</button></a>
+                    </div>
                 </div>
-            </div>
-
-            <h5 class="card-title mr-1" 
-                style="overflow: hidden;
-                      text-overflow: ellipsis;
-                      display: -webkit-box;
-                      -webkit-line-clamp: 3;
-                      -webkit-box-orient: vertical;"
-            >
-             <a href="{% url 'moderator:answer_page' question.id %}" style="text-decoration: none; color: #4c4c4c;"> 
-              {{question.content}}  
-            </a>
-            </h5>
-            
-        	<p class="card-subtitle">
-                <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.category}}</div>
-                {% for keyword in question.keywords_associated.all %}
-        		<div class="mb-2 mr-2 badge badge-pill badge-info">{{keyword}}</div>
-                {% endfor %}
+                {% endif %}
+                {% endif %}
+                <h5 class="card-title mr-1" 
+                    style="overflow: hidden;
+                          text-overflow: ellipsis;
+                          display: -webkit-box;
+                          -webkit-line-clamp: 5;
+                          -webkit-box-orient: vertical;
+                          font-size: 16px;
+                          text-transform: none;"
+                >
+                <a href="{% url 'moderator:answer_page' question.id %}" style="text-decoration: none; color: #4c4c4c;"> 
+                  {{question.content|title}}  
+                </a>              
+                </h5>
                 
-            </p>
-
-            <div class="widget-content p-0">
-                <div class="widget-content-wrapper">
-                  <div class="widget-content-left">
-                    <div class="btn-group">
-                      <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
-                        <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
-                      </a>
-                                
+              <p class="card-subtitle">
+                    <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.category}}</div>
+                    {% for keyword in question.keywords_associated.all %}
+                <div class="mb-2 mr-2 badge badge-pill badge-info">{{keyword}}</div>
+                    {% endfor %}
+                    
+                </p>
+    
+                <div class="widget-content p-0">
+                    <div class="widget-content-wrapper">
+                      <div class="widget-content-left">
+                        <div class="btn-group">
+                          {% if question.author.avatar %}
+                          <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                              <img width="42" class="rounded-circle" src="{{question.author.avatar.url}}" alt="">
+                          </a>
+                          {% else %}
+                          <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                              <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                          </a>
+                          {% endif %}
+                                    
+                        </div>
+                      </div>
+                      <div class="widget-content-left  ml-3 header-user-info">
+                        <div class="widget-heading">
+                          {{question.author}}
+                        </div>
+                        <div class="widget-subheading">
+                          {{question.author.profession}}
+                        </div>
+                      </div>
+                            
                     </div>
-                  </div>
-                  <div class="widget-content-left  ml-3 header-user-info">
-                    <div class="widget-heading">
-                      {{question.author}}
+                </div>  <p></p>
+                <p style="position: absolute; bottom: 20px;">
+                    Total Answers : {{question.answer_count}}
+                  <div style="position: absolute; bottom: 35px; right: 25px;">
+                  <i class="fa fa-heart m-1" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{question.like_count}}
+                  <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-up"></i> {{question.upvote_count}}
+                  <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.downvote_count}}</div>
+                </p>
+                
+            </div>
+      </div>
+      </div>
+    {% else %}
+    
+    
+    <!-- For Poll Questions -->
+    
+    {% regroup recent_options by question as questions %}
+    
+    {% for question in questions %}
+      <div class = "col col-md-6 col-xl-4"> 
+        <div class="main-card mb-3 card" id="poll_{{question.grouper.id}}" style="height: 385px; position: relative;">
+            <div class="card-body">
+              {% if question.grouper.author.user == request.user %}
+              {% if question.grouper.status != 'deleted' %}
+              <div class="dropdown d-inline-block mt-1" style="position: absolute; top:0px; right: 0px;">
+                    <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"></button>
+                    <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu" x-placement="bottom-start" style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(0px, 33px, 0px);">
+                            <button type="button" tabindex="0" class="dropdown-item js-edit-question" data-toggle="modal" data-target="#modal-book"  data-url="{% url 'moderator:edit_question' question.grouper.id %}">Edit</button>
+                          <a href="{% url 'moderator:delete_question' question.grouper.id %}" style="text-decoration: none;">
+                            <button type="button" tabindex="0" class="dropdown-item">Delete</button></a>
                     </div>
-                    <div class="widget-subheading">
-                      {{question.author.profession}}
-                    </div>
-                  </div>
-                        
                 </div>
-            </div>  <p></p>
-            <p>
-                Total Answers : {{question.answer_count}}
-                <div style="position: absolute; bottom: 35px; right: 20px;">
-                <i class="fa fa-heart m-1" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{question.like_count}}
-            	<i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-up"></i> {{question.upvote_count}}
-            	<i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.downvote_count}}</div>
-            </p>
-            
-        </div>
-	</div>
-  </div>	
-
-
-{% endfor %}
+                {% endif %}
+                {% endif %}
+                <h5 class="card-title mr-1" 
+                    style="overflow: hidden;
+                          text-overflow: ellipsis;
+                          display: -webkit-box;
+                          -webkit-line-clamp: 3;
+                          -webkit-box-orient: vertical;
+                          color: #4c4c4c;"
+                >
+                  {{question.grouper.content}}  
+                
+                  
+                </h5>
+                
+              <p class="card-subtitle">
+                    <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.grouper.category}}</div>
+                  {% for keyword in question.grouper.keywords_associated.all %}
+                <div class="mb-2 mr-2 badge badge-pill badge-info">{{keyword}}</div>
+                    {% endfor %}
+                  
+                  <div class="row">
+                  {% for option in question.list %}     
+                    <div class="col col-md-6">
+                      <div class="widget-content">
+                        <div class="widget-content-outer">
+                          <div class="widget-content-left fsize-1">
+                                <div class="text-muted opacity-6">{{option}}</div>
+                            </div>
+                            <div class="widget-content-wrapper">
+                                <div class="widget-content-left pr-2 fsize-1">
+                                    <div class="widget-numbers mt-0 fsize-1 text-info">{{option.vote_percent}}%</div>
+                                </div>
+                                <div class="widget-content-right w-100">
+                                    <div class="progress-bar-xs progress">
+                                        <div class="progress-bar bg-info" role="progressbar" aria-valuenow="{{option.vote_percent}}" aria-valuemin="0" aria-valuemax="100" style="width: {{option.vote_percent}}%;">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                          </div>
+                        </div>
+                    </div>
+                  {% endfor %}  
+                  </div>
+     
+                <div class="widget-content p-0">
+                    <div class="widget-content-wrapper">
+                      <div class="widget-content-left">
+                        <div class="btn-group">
+                          {% if question.grouper.author.avatar %}
+                          <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                              <img width="42" class="rounded-circle" src="{{question.grouper.author.avatar.url}}" alt="">
+                          </a>
+                          {% else %}
+                          <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
+                              <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                          </a>
+                          {% endif %}
+                                    
+                        </div>
+                      </div>
+                      <div class="widget-content-left  ml-3 header-user-info">
+                        <div class="widget-heading">
+                          {{question.grouper.author.fullname}}
+                        </div>
+                        <div class="widget-subheading">
+                          {{question.grouper.author.profession}}
+                        </div>
+                      </div>
+                            
+                    </div>
+                </div>  <p></p>
+                <p style="position: absolute; bottom: 20px;">
+                    Total Answers : {{question.grouper.answer_count}}
+                    <div style="position: absolute; bottom: 35px; right: 25px;">
+                    <i class="fa fa-heart" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{question.grouper.like_count}}
+                  <i class="fa fa-fw" aria-hidden="true" title="Copy to use arrow-up"></i> {{question.grouper.upvote_count}}
+                  <i class="fa fa-fw" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.grouper.downvote_count}}</div>
+                </p>
+                
+            </div>
+      </div>
+      </div>
+       
+    {% endfor %}
+    {% endif %}
+    {% endfor %}
 
 </div>
 
@@ -227,9 +345,9 @@
                     </tbody>
                 </table>
             </div>
+            {% if page_obj.has_other_pages %}
             <div class="d-block text-center card-footer">
-                {% if page_obj.has_other_pages %}
-            	<ul class="pagination">
+            	<ul class="pagination text-center">
                     {% if page_obj.has_previous %}
                         <li class="page-item"><a href="?page={{ page_obj.previous_page_number }}" class="page-link" aria-label="Previous"><span aria-hidden="true">«</span><span class="sr-only">Previous</span></a></li>
                     {% else %}
@@ -237,8 +355,8 @@
                     {% endif %}
 
                     {% for i in page_obj.paginator.page_range %}
-                      {% if users.number == i %}
-                        <li class="page-item active"><span>{{ i }}<span class="sr-only">(current)</span></span></li>
+                      {% if page_obj.number == i %}
+                        <li class="page-item active" style="color: darkslategrey; padding: 8px 12px; margin-top: -1px; font-size: 15px;"><span>{{ i }}</span></li>
                       {% else %}
                         <li><a href="?page={{ i }}">{{ i }}</a></li>
                       {% endif %}
@@ -253,9 +371,8 @@
                         
                         
                 </ul>
-                {% endif %}
             </div>
-
+            {% endif %}
         </div>
     </div>
 </div>

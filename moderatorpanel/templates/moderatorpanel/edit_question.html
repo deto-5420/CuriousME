@@ -1,5 +1,12 @@
-<form method="post" enctype="multipart/form-data" action="{% url 'moderator:edit_question' form.instance.pk %}" class="js-question-edit-form">
+{% load static %}
+<form method="post" enctype="multipart/form-data" action="{% url 'moderator:edit_question' question_form.instance.pk %}" class="js-question-edit-form">
   {% csrf_token %}
+  
+  <script>
+    var edit_ques_csrf_token = "{{csrf_token}}";
+    console.log(edit_ques_csrf_token)
+  </script>
+  
   <div class="modal-header">
     <h4 class="modal-title">Edit Question</h4>
     
@@ -9,7 +16,7 @@
   </div>
   <div class="modal-body">
    
-    {% include 'moderatorpanel/qform.html' %}
+    {% include 'moderatorpanel/qform.html' %} 
 
   </div>
   <div class="modal-footer">
@@ -45,5 +52,82 @@
       cache: true,
     }
 });
+
+$(".select2-search__field").on({
+  keydown: function(e) {
+    if (e.which === 32)
+      return false;
+  },
+  change: function() {
+    this.value = this.value.replace(/\s/g, "");
+  }
+});
+
+function add_choice(){
+  if(f==0){
+    console.log("clicked")
+    document.getElementById('choice-3').style.display = 'block';
+    f=1;
+  }
+  else{
+    document.getElementById('choice-4').style.display = 'block';
+    document.getElementById('add-choice').style.display = 'none'
+  }
+}
+
+$(function() {
+  // Multiple images preview in browser
+  // preview = $("#f_preview");  
+  var imagesPreview = function(input, preview) {
+    $("#f_preview").empty();
+      if (input.files) {
+          var filesAmount = input.files.length;
+          console.log('total:',filesAmount)
+          for (var i = 0; i < filesAmount; i++) {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+              // var file = event.target.files;
+
+              var file = input.files;
+              // console.log(input.file[i].name);
+              console.log(file);
+              console.log('i',i)
+              var fname = file[0].name;
+              console.log(fname);
+              var extension = fname.slice((Math.max(0, fname.lastIndexOf(".")) || Infinity) + 1);
+              if (extension == 'jpeg' || extension == 'jpg' || extension == 'png' || extension == 'svg'){
+                $($.parseHTML('<img>')).attr('src', event.target.result).attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }
+              else if(extension == 'pdf'){
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/pdf.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }
+              else if(extension == 'txt'){
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/txt.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              } 
+              // else if(extension === 'ppt'){
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/ppt.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }else if(extension === 'doc'){
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/doc.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }else if(extension === 'xlsx'){
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/xlsx.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }else {
+              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/document.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              // }
+
+            }
+            reader.readAsDataURL(input.files[i]);
+            
+          }
+          // $(".image_preview").css("height", "120px");
+          // $(".image_preview").css("width", "100px");
+      }
+
+  };
+  var file = document.getElementById("id_file");
+      file.onchange = function() {
+      imagesPreview(this, '#f_preview');
+  };
+});
+
 </script>
 {% endblock %}

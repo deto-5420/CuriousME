@@ -1,0 +1,92 @@
+{% for answer in answers %}
+<div class="main-card mb-3 ml-5 card" style="background-color: #f2f2f2;">
+    <div class="card-body">
+        {% if answer.user_id.avatar %}
+            <img width="37" class="rounded-circle" src="{{answer.user_id.avatar.url}}" alt="">
+        {% else %}
+            <img width="37" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+        {% endif %}
+        {{answer.user_id.fullname|title}}
+        
+        <p class="ml-4">
+        {{answer.content}}
+        </p> 
+    </div>
+    {% if not replies.count == 0 %}
+    <div class="container">
+    <div id="exampleAccordion" data-children=".item">
+    <div class="item mb-3">
+    <span>
+    <button type="button" aria-expanded="false" aria-controls="exampleAccordion" data-toggle="collapse" data-target="#collapseExample{{forloop.counter}}" class="mb-1 mr-1 btn btn-outline-dark btn-sm">Click to see all Replies</button></span>
+    <span style="float: right;">
+    <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{answer.like_count}}
+    <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{answer.dislike_count}}
+    </span>
+        {% for reply in replies %}
+    <div id="replies">
+        <div data-parent="#exampleAccordion" id="collapseExample{{forloop.parentloop.counter}}" class="collapse" style="">
+            <p class="">
+            <div class="main-card ml-5 card" style="background-color: #e2e2e2; ">
+                <div class="card-body">
+                    {% if answer.user_id.avatar %}
+                    <img width="32" class="rounded-circle" src="{{reply.user_id.avatar.url}}" alt="">
+                    {% else %}
+                        <img width="32" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                    {% endif %}
+                
+                <p class="ml-4">
+                {{reply}}
+                </p>
+                <div style="float: right;">
+                <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{reply.like_count}}
+                <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{reply.dislike_count}}
+                </div>
+                </div>
+            </div>
+            </p>
+                        
+            {% if forloop.last %}
+            <button data-url="{% url 'moderator:replies' answer.id %}" class="load_replies mb-2 mr-2 border-0 btn-transition btn btn-outline-dark" data-page="2">See More Replies</button>
+            {% endif %}
+        </div>
+    </div>
+        {% endfor %}
+        </div>
+        </div>
+        </div>
+        {% endif %}
+        </div>    
+        {% endfor %}
+
+<script>
+    $('.load_replies').on('click', function() {
+    console.log("replies clicked")
+    var link = $(this);
+    var page = link.data('page');
+    $.ajax({
+      type: 'get',
+      url: link.attr("data-url"), 
+      data: {
+        'page': page,
+      },
+      success: function(data) {
+        // if there are still more pages to load,
+        // add 1 to the "Load More Posts" link's page data attribute
+        // else hide the link
+        if (data.has_next) {
+            console.log(data.has_next)
+            link.data('page', parseInt(page)+1);
+        } else {
+          console.log("No next page")
+          link.hide();
+        }
+        // append html to the posts div
+        console.log("appended")
+        $('#replies').last().append(data.reply_html).hide().fadeIn("slow");
+      },
+      error: function(xhr, status, error) {
+        // shit happens friends!
+      }
+    });
+  });
+</script>

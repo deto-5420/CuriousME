@@ -21,9 +21,21 @@
   	
   	<div class="col-md-12">
   		
-  		<div class="main-card mb-3 card" style="position:relative; background-color: ;">
+  		<div class="main-card mb-3 card" style="position:relative;">
         <div class="card-body">
-            <h5 class="card-title" 
+          {% if request.user.id == question.author.user.id %}
+            <div class="dropdown d-inline-block mt-2" style="position: absolute; top:0px; right: 0px;">
+              <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"></button>
+              <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu" x-placement="bottom-start" style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(0px, 33px, 0px);">
+
+                      <button type="button" tabindex="0" class="dropdown-item js-edit-question" data-toggle="modal" data-target="#modal-book" data-url="/moderator/edit_question/12">Edit</button>
+                  <a href="/moderator/delete_question/12">
+                      <button type="button" class="dropdown-item">Delete</button>
+                  </a>
+              </div>
+            </div>
+          {% endif %}
+            <h5 class="card-title mr-1" 
                 style="overflow: hidden;
                       text-overflow: ellipsis;
                       display: -webkit-box;
@@ -34,39 +46,31 @@
             >
               {{question.content|title}}  
             
-              
             </h5>
             
-          <p class="card-subtitle">
-                <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.category}}</div>
-
-                {% for keyword in question.keywords_associated.all %}
+            <p class="card-subtitle">
+              <div class="mb-2 mr-2 badge badge-pill badge-success">{{question.category}}</div>
+              {% for keyword in question.keywords_associated.all %}
                 <div class="mb-2 mr-2 badge badge-pill badge-info">{{keyword}}</div>
-                    {% endfor %}
-
-                <div class="dropdown d-inline-block ">
-                    <button type="button" aria-haspopup="true" aria-expanded="false" data-toggle="dropdown" class="mb-2 mr-2 dropdown-toggle btn btn-outline-link"></button>
-                    <div tabindex="-1" role="menu" aria-hidden="true" class="dropdown-menu" x-placement="bottom-start" style="position: absolute; will-change: transform; top: 0px; left: 0px; transform: translate3d(0px, 33px, 0px);">
-                        <button type="button" tabindex="0" class="dropdown-item js-edit-question" data-toggle="modal" data-target="#modal-book"  data-url="{% url 'moderator:edit_question' question.id %}">Edit</button>
-                        <a href="{% url 'moderator:delete_question' question.id %}">
-                        <button type="button" tabindex="0" class="dropdown-item">Delete</button></a>
-                    </div>
-                </div>
+              {% endfor %} 
             </p>
-
+           <span style="font-style: italic;">
+             Posted {{question.created_at|timesince}} ago.
+           </span>
             <div class="widget-content p-0">
                 <div class="widget-content-wrapper">
                   <div class="widget-content-left">
                     <div class="btn-group">
-                      <a data-toggle="dropdown" aria-haspopup="true" aria-expanded="false" class="p-0 btn">
-                        <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">
-                      </a>
-                                
+                      {% if question.author.avatar %}
+                          <img width="42" class="rounded-circle" src="{{question.author.avatar.url}}" alt="">
+                      {% else %}
+                          <img width="42" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                      {% endif %}    
                     </div>
                   </div>
                   <div class="widget-content-left  ml-3 header-user-info">
                     <div class="widget-heading">
-                      {{question.author}}
+                      {{question.author.fullname}}
 
                     </div>
                     <div class="widget-subheading">
@@ -76,33 +80,69 @@
                   </div>
                         
                 </div>
-                {% if files %}
-                <div class="m-1">
-                    <img src="{{ MEDIA_URL }}{{ files.url }}" alt="">
-                    <span>{{files.url}}</span>
-                    <span>sdjfl;sdjfds</span>
-                    <span>sdjfl;sdjfds</span>
-                  
-                </div>
-                {% endif %}
+              
                 <div class="mt-3 ml-2" style="position: relative;">
-                  <p style="">
-                      Total Answers : {{question.answer_count}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-                    
+                  <p>
+                      <span> Total Answers : {{question.answer_count}}</span>
+                    <span style="float: right;">
                       <i class="fa fa-heart m-1" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{question.like_count}}
                     <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-up"></i> {{question.upvote_count}}
-                    <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.downvote_count}}
+                    <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{question.downvote_count}}</span>
                   </p>
                 </div>
-            </div>  <p></p>
-
+            </div>  <p>
+              {% for file in files %}
+                  {% if file.file_type == 'image/jpg' or file.file_type == 'image/png' or file.file_type == 'image/jpeg' or file.file_type == 'image/gif' or file.file_type == 'image/svg+xml' %}
+                    <a href="{{file.file.url}}">
+                      <img src="{{file.file.url}}" alt="" height="100px" width="100px">
+                      <!-- {{file.file.name|make_list|slice:"/"|last}} -->
+                    </a>
+                  {% elif file.file_type == 'application/pdf' %}
+                    <a href="{{file.file.url}}">
+                      <img src="{% static 'moderatorpanel/login/icons/pdf.svg' %}" alt="" height="100px" width="100px">
+                      
+                    </a>
+                  {% elif file.file_type == 'application/msword' or file.file_type == 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' %}
+                    <a href="{{file.file.url}}">
+                      <img src="{% static 'moderatorpanel/login/icons/docs.svg' %}" alt="" height="100px" width="100px">
+                      
+                    </a>
+                  {% elif file.file_type == 'application/vnd.ms-powerpoint' or file.file_type == 'application/vnd.openxmlformats-officedocument.presentationml.presentation' %}
+                    <a href="{{file.file.url}}">
+                      <img src="{% static 'moderatorpanel/login/icons/ppt.svg' %}" alt="" height="100px" width="100px">
+                      
+                    </a>
+                  {% elif file.file_type == 'text/plain' %}
+                    <a href="{{file.file.url}}">
+                      <img src="{% static 'moderatorpanel/login/icons/txt.svg' %}" alt="" height="100px" width="100px">
+                      
+                    </a>
+                  {% elif file.file_type == 'application/vnd.ms-excel' or file.file_type == 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' %}
+                    <a href="{{file.file.url}}">
+                      <img src="{% static 'moderatorpanel/login/icons/ppt.svg' %}" alt="" height="100px" width="100px">
+                      
+                    </a> 
+                  {% endif %}
+                {% endfor %}
+            </p>
+            <div id="answers">
+          
             {% for answer in answers %}
           <div class="main-card mb-3 ml-5 card" style="background-color: #f2f2f2;">
             <div class="card-body">
-              <a href="" style="text-decoration: none; color: black;">  
-            	<img width="30" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">&nbsp;
-              {{answer.user_id.fullname|title}}
-              </a>
+              <div>
+                {% if answer.user_id.avatar %}
+                    <img width="37" class="rounded-circle" src="{{answer.user_id.avatar.url}}" alt="">
+                {% else %}
+                    <img width="37" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                {% endif %}
+                  {{answer.user_id.fullname|title}}</a>
+                  <span style="font-style: italic;">
+                  , Posted {{answer.created_at|timesince}} ago.
+                  </span>
+                <a href="{% url 'moderator:spam_answer' answer.id %}"><span style="float: right;"><i class="fa fa-fw" aria-hidden="true" title="Flag Answer as Spammed"></i></span>
+                </a>
+              </div>
               <p class="ml-4">
               	{{answer.content}}
               </p> 
@@ -112,20 +152,34 @@
             	<div id="exampleAccordion" data-children=".item">
             	<div class="item mb-3">
                 <span>
-                <button type="button" aria-expanded="false" aria-controls="exampleAccordion" data-toggle="collapse" data-target="#collapseExample{{forloop.counter}}" class="mb-1 mr-1 btn btn-outline-dark btn-sm">Click to see all {{replies.count}} Replies</button></span>
+                <button type="button" aria-expanded="false" aria-controls="exampleAccordion" data-toggle="collapse" data-target="#collapseExample{{forloop.counter}}" class="mb-1 mr-1 btn btn-outline-dark btn-sm">Click to see all Replies</button></span>
                 <span style="float: right;">
                 <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{answer.like_count}}
                 <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{answer.dislike_count}}
                 </span>
+                <div id="replies">
                  {% for reply in replies %}
 
                     <div data-parent="#exampleAccordion" id="collapseExample{{forloop.parentloop.counter}}" class="collapse" style="">
                       <p class="">
                         <div class="main-card ml-5 card" style="background-color: #e2e2e2; ">
                           <div class="card-body">
-                            <a href="" style="text-decoration: none; color: black;">  
-                          <img width="30" class="rounded-circle" src="/static/moderatorpanel/images/avatars/1.jpg" alt="">&nbsp;{{ reply.user_id.fullname|title }}
-                          </a>
+                            <div>
+                              {% if answer.user_id.avatar %}
+                                  <img width="32" class="rounded-circle" src="{{reply.user_id.avatar.url}}" alt="">
+                              {% else %}
+                                  <img width="32" class="rounded-circle" src="/static/moderatorpanel/images/dummy.webp" alt="">
+                              {% endif %}
+                              {{ reply.user_id.fullname|title }}
+                              <span style="font-style: italic;">
+                                Posted {{reply.created_at|timesince}} ago.
+                              </span>
+                              {% if reply.status == 'spammed' %}
+                              <span style="float: right;">"This reply is marked as spammed"</span>
+                              {% else %}
+                                <a href="{% url 'moderator:spam_reply' reply.id %}"><span style="float: right;"><i class="fa fa-fw" aria-hidden="true" title="Flag Answer as Spammed"></i></span></a>
+                              {% endif %}
+                            </div>
                           <p class="ml-4">
                             {{reply}}
                           </p>
@@ -136,31 +190,39 @@
                           </div>
                         </div>
                       </p>
+                      
+                      <div></div>
+                      
+                      {% if forloop.last %}
+                      <button data-url="{% url 'moderator:replies' answer.id %}" class="load_replies mb-2 mr-2 border-0 btn-transition btn btn-outline-dark" data-page="2">See More Replies</button>
+                      {% endif %}
                     </div>
-                    <div id="replies">                       
                     
-                  </div>
-
                   {% endfor %}
-                  
-
+                </div>
               </div>
             </div>
             </div>
             {% endif %}
-    	    </div>
-            
-            <button id = "load_replies" data-url="{% url 'moderator:replies' answer.id %}" class="mb-2 mr-2 border-0 btn-transition btn btn-outline-dark" data-page="2">See More Replies</button>
-          
-          
+          </div>   
 
-            {% endfor %}
+          
+          
+          
+          {% empty %}
+             <center>No Answers Yet! </center>
+             
+        {% endfor %}
+        
+      </div>
+      <button id = "load_answers" data-url="{% url 'moderator:answers' question.id %}" class="mb-2 mr-2 border-0 btn-transition btn btn-outline-dark" data-page="2">See More Answers</button>
+
         </div>
+    </div>
+
   </div>
 
-  	</div>
-
-  </div>	
+</div>	
 
 {% endblock %}
 
@@ -168,38 +230,72 @@
 
 <script type="text/javascript">
 
-
+(function($) {
+  $('.load_replies').on('click', function() {
+    console.log("replies clicked")
+    var link = $(this);
+    var page = link.data('page');
+    $.ajax({
+      type: 'get',
+      url: link.attr("data-url"), 
+      data: {
+        'page': page,
+      },
+      success: function(data) {
+        // if there are still more pages to load,
+        // add 1 to the "Load More Posts" link's page data attribute
+        // else hide the link
+        if (data.has_next) {
+            console.log(data.has_next)
+            link.data('page', parseInt(page)+1);
+        } else {
+          console.log("No next page")
+          link.hide();
+        }
+        // append html to the posts div
+        console.log("appended")
+        $('#replies').last().append(data.reply_html).hide().fadeIn("slow");
+      },
+      error: function(xhr, status, error) {
+        // shit happens friends!
+      }
+    });
+  });
+}(jQuery));
 
 (function($) {
-      $('#load_replies').on('click', function() {
-        var link = $(this);
-        var page = link.data('page');
-        $.ajax({
-          type: 'post',
-          url: link.attr("data-url"),
-          data: {
-            'page': page,
-            'csrfmiddlewaretoken': window.CSRF_TOKEN // from index.html
-          },
-          success: function(data) {
-            // if there are still more pages to load,
-            // add 1 to the "Load More Posts" link's page data attribute
-            // else hide the link
-            if (data.has_next) {
-                link.data('page', page+1);
-            } else {
-              console.log("No next page")
-              link.hide();
-            }
-            // append html to the posts div
-            $('#replies').append(data.reply_html);
-          },
-          error: function(xhr, status, error) {
-            // shit happens friends!
-          }
-        });
-      });
-    }(jQuery));
+  $('#load_answers').on('click', function() {
+    var link = $(this);
+    var page = link.data('page');
+    console.log("Page",link.data('page'))
+    $.ajax({
+      type: 'get',
+      url: link.attr("data-url"), 
+      data: {
+        'page': page,
+      },
+      success: function(data) {
+        // if there are still more pages to load,
+        // add 1 to the "Load More Posts" link's page data attribute
+        // else hide the link
+        if (data.has_next) {
+            console.log(data.has_next);
+            link.data('page', parseInt(page)+1);
+            console.log(link.data('page'))
+        } else {
+          console.log("No next page")
+          link.hide();
+        }
+        // append html to the posts div
+        console.log("appended")
+        $('#answers').last().append(data.ans_html).hide().fadeIn();
+      },
+      error: function(xhr, status, error) {
+        // shit happens friends!
+      }
+    });
+  });
+}(jQuery));
 
 </script>
 

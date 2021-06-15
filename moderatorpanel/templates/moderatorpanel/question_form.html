@@ -27,218 +27,54 @@
 
 {% endblock %}
 
-<style type="text/css">
-  
-#id_content{}
-
-</style>
 
 {% block dashboard %}       
 
-
-<ul class="body-tabs body-tabs-layout tabs-animated body-tabs-animated nav">
-    <li class="nav-item">
-        <a role="tab" class="nav-link show active" id="tab-0" data-toggle="tab" href="#tab-content-0" aria-selected="false">
-            <span>Question</span>
-        </a>
-    </li>
-    <li class="nav-item">
-        <a role="tab" class="nav-link show" id="tab-1" data-toggle="tab" href="#tab-content-1" aria-selected="true">
-            <span>Poll</span>
-        </a>
-    </li>
-</ul>
-
-<div class="tab-content">
-<div class="tab-pane tabs-animation fade active show" id="tab-content-0" role="tabpanel">
-
-
-
-  <div class="mb-3 card">
-    <div class="card-header">
-        <ul class="nav nav-justified">
-            <li class="nav-item"><a data-toggle="tab" href="#tab-eg7-0" class="nav-link show active">Form</a></li>
-        </ul>
-    </div>
-    <div class="card-body">
-        <div class="tab-content">
-            <div class="tab-pane show active" id="tab-eg7-0" role="tabpanel">
-              <div class="card-body"><h5 class="card-title"></h5> 
-                <form class="" method="POST" action="{% url 'moderator:add_question' %}" enctype="multipart/form-data">
-                    {% csrf_token %}
-
-                    {% load widget_tweaks %}
-
-                    {% for field in question_form %}
-                      <div class="form-group{% if field.errors %} has-error{% endif %}">
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {% render_field field class="form-control" %}
-                        {% for error in field.errors %}
-                          <p class="help-block">{{ error }}</p>
-                        {% endfor %}
-                      </div>
-                    {% endfor %}
-
-                    <!-- <select class="js-example-responsive" multiple="multiple" style="width: 75%"></select> -->
-
-                    {{file_form.as_p}}
-
-                    <div class = "col-md-6" id = "q_preview"></div>
-                    <!-- <img id="q_preview" height="100px" width="100px" style="display: none;" /> -->
-
-
-                  <!-- div class="position-relative row form-group"><label for="Question" class="col-sm-2 col-form-label">Question</label>
-                      <div class="col-sm-10" >
-                          {{ question_form.content }} -->
-                          <!-- <input name="question" id="Question" placeholder="Enter Your Question here." type="text" class="form-control"></input> -->
-                          <!-- <div class="mt-2" id = "q_suggest"> -->
-                            <!-- <li></li> -->
-                          <!-- </div> -->
-                      <!-- </div> -->
-                  <!-- </div> -->
-                  <!-- <div class="position-relative row form-group"><label for="category" class="col-sm-2 col-form-label">Category</label> -->
-                      <!-- <div class="col-sm-10"> -->
-                          <!-- {{question_form.category}} -->
-
-                      <!-- <select class="form-control-sm form-control" name="category">
-                          {{form.category}}
-
-                          <option value="{{category.id}}">
-                              {{ form.category }}
-                          </option>
-
-                      </select> -->
-                      <!-- </div> -->
-                  <!-- </div> -->
-                      
-                  <!-- <div class="position-relative row form-group"><label for="keywords" class="col-sm-2 col-form-label">Keywords</label> -->
-                      <!-- <div class="col-sm-10"> -->
-                      <!-- <input type="submit" multiple name="keyword[]">
-                      <select name="" class="mySelect" multiple="multiple" style="width: 100%"></select></input> -->
-                    
-                      <!-- {{question_form.keywords_associated}} -->
-                                     
-                  <!-- </div> -->
-                  <!-- </div> -->
-                  
-                  <!-- <div class="position-relative row form-group"><label for="file" class="col-sm-2 col-form-label">File</label>
-                      <div class="col-sm-10"><input name="file" id="file" type="file" class="form-control-file">
-                          <small class="form-text text-muted">Max 3MB</small>
-                      </div>
-                  </div> -->            
-                  <div class="position-relative row form-check text-right">
-                      <div class="col-sm-10 offset-sm-2">
-                          <button type="Submit" class="btn btn-primary">Submit</button>
-                      </div>
-                  </div> 
-                </form>
-              </div>
-
-            </div>
-            
-            
-        </div>
-    </div>
+<div class="mb-3 card">
+  <div class="card-header">
+      <ul class="nav nav-justified">
+          <li class="nav-item"><a data-toggle="tab" href="#tab-eg7-0" class="nav-link show active">Form</a></li>
+      </ul>
   </div>
-        
-</div>
+  <div class="card-body">
+      <div class="tab-content">
+          <div class="tab-pane show active" id="tab-eg7-0" role="tabpanel">
+            <div class="card-body"><h5 class="card-title"></h5> 
+              <form class="" method="POST" action="{% url 'moderator:add_question' %}" enctype="multipart/form-data">
+                  {% csrf_token %}
 
-
-    <div class="tab-pane tabs-animation fade" id="tab-content-1" role="tabpanel">
-        <div class="mb-3 card">
-    <div class="card-header">
-        <ul class="nav nav-justified">
-            <li class="nav-item"><a data-toggle="tab" href="#tab-eg7-2" class="nav-link show active">Poll Form</a></li>
-        </ul>
-    </div>
-    <div class="card-body">
-        <div class="tab-content">
-            <div class="tab-pane show active" id="tab-eg7-2" role="tabpanel">
-                <form class="" method="POST" action="{% url 'moderator:add_poll' %}" enctype="multipart/form-data">
-                    {% csrf_token %}
-
-
-                    {% load widget_tweaks %}
-
-                    {% for field in question_form %}
-                      <div class="form-group{% if field.errors %} has-error{% endif %}">
-                        <label for="{{ field.id_for_label }}">{{ field.label }}</label>
-                        {% render_field field class="form-control" %}
-                        {% for error in field.errors %}
-                          <p class="help-block">{{ error }}</p>
-                        {% endfor %}
-                      </div>
-                    {% endfor %}
-                    
-                    {{option_form.as_p}}
-
-                    {{file_form.as_p}}
-
-                  </div>
+                  {% include 'moderatorpanel/qform.html' %}
                   
-                  <!-- <div class="position-relative row form-group"><label for="file" class="col-sm-2 col-form-label">File</label>
-                      <div class="col-sm-10"><input name="file" id="file" type="file" class="form-control-file">
-                          <small class="form-text text-muted">Max 3MB</small>
-                      </div>
-                  </div> -->            
-                  <div class="position-relative row form-check text-right">
-                      <div class="col-sm-10 offset-sm-2">
-                          <button type="Submit" class="btn btn-primary">Submit</button>
-                      </div>
-                  </div>
-                </form>
-              </div>
-
+                <div class="position-relative row form-check text-right">
+                    <div class="col-sm-10 offset-sm-2">
+                        <button type="Submit" class="btn btn-primary">Submit</button>
+                    </div>
+                </div> 
+              </form>
             </div>
-            
-        </div>
-    </div>
+          </div>
+      </div>
+  </div>
+</div>
+      
 </div>
 
-
-</div>
-    
+  
 
 {% endblock %}
 
 {% block js %}
 
 <script type="text/javascript">
-  
-  // var elem = document.getElementById("id_question_keywords_associated")
-  // $(elem).addClass("mySelect")
-  // elem.classList.add("mySelect")
-  console.log("hdsgbfkasdgbfu")
+
+console.log("hdsgbfkasdgbfu")
 
 $("#id_keywords_associated").css("width", "100%");
-
-$(document).on('keyup', '.select2-search__field', function (e) {
-    if (e.which === 13) {
-      console.log('Pressed enter!');
-      console.log("Selected value is: "+$("#id_keywords_associated:last").select2("val").slice(-1)[0]);
-      keyword = $("#id_keywords_associated").select2("val").slice(-1)[0]
-      $.ajax({
-      url: '{% url "moderator:return_keyword" %}',
-      type:'post',
-      data:{
-        'keyword':keyword
-      },
-      dataType:'json',
-      success: function(data){
-        console.log("success");
-        console.log(data);
-
-        // $("#q_suggest").html(data.question);
-
-      }
-    });
-    }
-});
 
 $("#id_keywords_associated").select2({
     tags:true,
     delay: 250,
-    placeholder: "Type to add keywords",
+    placeholder: "Type and press enter to add keywords",
     theme: "classic",
     minimumInputLength: 3,
     ajax :{
@@ -260,89 +96,161 @@ $("#id_keywords_associated").select2({
     }
 });
 
+//setup before functions
+var typingTimer;                //timer identifier
+var doneTypingInterval = 2000;  //time in ms (3 seconds)
 
-
-$('#id_content').change(function(){
-  var question = $(this).val();
-
-  $.ajax({
-    url: '{% url "moderator:question_form" %}',
-    data:{
-      'q':question
-    },
-    dataType:'json',
-    success: function(data){
-      console.log(data.question);
-      $("#id_content").after(data.question);
-    }
-  });
-  return false;
+$('[name="content"]').on('change keyup paste', function(event){
+  clearTimeout(typingTimer);
+  // if ($('[name="content"]').val()) {
+    typingTimer = setTimeout(doneTyping, doneTypingInterval);
+  // }
 });
 
-$('#id_content').change(function(){
-  var question = $(this).val();
-
-  $.ajax({
-    url: '{% url "moderator:question_form" %}',
-    data:{
-      'p':question
-    },
-    dataType:'json',
-    success: function(data){
-      console.log(data.question);
-      $("#p_suggest").html(data.question);
-    }
-  });
+$('[name="content"]').on('keydown', function(event){
+  clearTimeout(typingTimer)
 });
 
+//user is "finished typing," do something
+function doneTyping () {
+ 
+    var question = $('[name="content"]').val();
+    var qtype = document.getElementById('id_question_type').value
+    console.log("working")
+    console.log(question)
+    console.log(qtype)
+    if(qtype == 'poll'){
+      $.ajax({
+        url: '{% url "moderator:question_suggestion" %}',
+        method: 'get',
+        data:{
+          'p':question
+        },
+        dataType:'json',
+        success: function(data){
+          // if (data.question){
+          //   console.log(data.question);
+          //   console.log(data.id);
+          //   $("#id_content").after(data.question).id="qsuggest_"+data.id;
+          // }
+          if(data.length>0 && data != None){
+            for(i=0; i<data.length; i++){
+              $("#id_content").after(data[i]).id="qsuggest_"+i;
+            }
+          }
+        }
+      });
+      return false;
+    }
+    else if(qtype == 'normal'){
+      $.ajax({
+        url: '{% url "moderator:question_suggestion" %}',
+        method: 'get',
+        data:{
+          'q':question
+        },
+        dataType:'json',
+        success: function(data){
+          if(data.length>0 && data != None){
+            for(i=0; i<data.length; i++){
+              $("#id_content").after(data[i]).id="qsuggest_"+i;
+            }
+          }
+          
+          // if (data.question){
+          //   console.log(data);
+          //   for()
+          //   $("#id_content").after(data.question).id="qsuggest_"+data.id;
+          // }
+        }
+      });
+      return false;
+    }
+  
+}
 
-//file preview
-// document.getElementById("id_file").onchange = function() {
-  //you can remove this code if you want previous user input
-    // for(let i=0;i<this.files.length;++i){
-    //   let filereader = new FileReader();
-    //   // let $img=jQuery.parseHTML("<img src=''>");
-    //   filereader.onload = function(){
-    //     $("#q_preview").css("display", "block");
-    //     $("#q_preview")[0].src=this.result;
-    //   };
-    //   filereader.readAsDataURL(this.files[i]);
-    //   // $("#q_preview").append($img);
+function showChoice()
+{
+    qtype = document.getElementById('id_question_type').value
+    console.log(qtype)
+    if(qtype == 'poll'){
+      document.getElementById('choices').style.display = 'block'
+      $('[name="form-0-choice"]').prop('required',true);
+      $('[name="form-1-choice"]').prop('required',true);
+      $('#choices input').attr({'class':'ml-1'})
+
+    }
+    else if(qtype == 'normal'){
+      document.getElementById('choices').style.display = 'none'
+    }
+}
+
+document.getElementById('choice-3').style.display = 'none'
+document.getElementById('choice-4').style.display = 'none'
+$("#id_content").attr("placeholder", "Enter your question here, Max 250 Chars.");
+
+var f = 0;
+
+function add_choice(){
+  if(f==0){
+    console.log("clicked")
+    document.getElementById('choice-3').style.display = 'block';
+    f=1;
+  }
+  else{
+    document.getElementById('choice-4').style.display = 'block';
+    document.getElementById('add-choice').style.display = 'none'
+  }
+}
+$(".select2-search__field").on({
+  keydown: function(e) {
+    if (e.which === 32)
+      return false;
+  },
+  change: function() {
+    this.value = this.value.replace(/\s/g, "");
+  }
+});
 
 $(function() {
   // Multiple images preview in browser
-  // preview = $("#q_preview");  
+  // preview = $("#f_preview");  
   var imagesPreview = function(input, preview) {
-    $("#q_preview").empty();
+    $("#f_preview").empty();
       if (input.files) {
           var filesAmount = input.files.length;
-          console.log(filesAmount)
-          for (var i = 0; i < filesAmount; ++i) {
-              var reader = new FileReader();
-              reader.onload = function(event) {
-              var file = event.target.files;
-              // console.log(file[i].name);
-              var fname = input.files[0].name;
+          console.log('total:',filesAmount)
+          for (var i = 0; i < filesAmount; i++) {
+            var reader = new FileReader();
+            reader.onload = function(event) {
+              // var file = event.target.files;
+
+              var file = input.files;
+              // console.log(input.file[i].name);
+              console.log(file);
+              console.log('i',i)
+              var fname = file[0].name;
               console.log(fname);
               var extension = fname.slice((Math.max(0, fname.lastIndexOf(".")) || Infinity) + 1);
+              console.log("extension", extension)
               if (extension == 'jpeg' || extension == 'jpg' || extension == 'png' || extension == 'svg'){
                 $($.parseHTML('<img>')).attr('src', event.target.result).attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
               }
-              if(extension == 'pdf'){
+              else if(extension == 'pdf'){
                 $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/pdf.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
               }
-              if(extension == 'txt'){
+              else if(extension == 'txt'){
                 $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/txt.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
               } 
-              // else if(extension === 'ppt'){
-              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/ppt.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
-              // }else if(extension === 'doc'){
-              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/doc.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
-              // }else if(extension === 'xlsx'){
-              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/xlsx.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
-              // }else {
-              //   $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/document.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
-              // }
+              else if(extension === 'ppt'){
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/ppt.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }else if(extension === 'doc'){
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/doc.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }else if(extension === 'xlsx'){
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/xlsx.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }else {
+                $($.parseHTML('<img>')).attr('src', "{% static 'moderatorpanel/login/icons/document.svg' %}").attr("height", "100px").attr("width", "100px").attr('class', "m-1").appendTo(preview);
+              }
 
             }
             reader.readAsDataURL(input.files[i]);
@@ -355,79 +263,9 @@ $(function() {
   };
   var file = document.getElementById("id_file");
       file.onchange = function() {
-      imagesPreview(this, '#q_preview');
+      imagesPreview(this, '#f_preview');
   };
 });
-
-
-
-
-// document.getElementById("id_form-0-file").onchange = function () {
-//     var reader = new FileReader();
-
-//     reader.onload = function (e) {
-//         // get loaded data and render thumbnail.
-//         $("#preview0").css("display", "block");
-//         document.getElementById("preview0").src = e.target.result;
-//     };
-
-//     // read the image file as a data URL.
-//     reader.readAsDataURL(this.files[0]);
-// };
-
-// document.getElementById("id_form-1-file").onchange = function () {
-//     var reader = new FileReader();
-
-//     reader.onload = function (e) {
-//         // get loaded data and render thumbnail.
-//         $("#preview1").css("display", "block");
-//         document.getElementById("preview1").src = e.target.result;
-//     };
-
-//     // read the image file as a data URL.
-//     reader.readAsDataURL(this.files[0]);
-// };
-
-// document.getElementById("id_form-2-file").onchange = function () {
-//     var reader = new FileReader();
-
-//     reader.onload = function (e) {
-//         // get loaded data and render thumbnail.
-//         $("#preview2").css("display", "block");
-//         document.getElementById("preview2").src = e.target.result;
-//     };
-
-//     // read the image file as a data URL.
-//     reader.readAsDataURL(this.files[0]);
-// };
-
-// document.getElementById("id_form-3-file").onchange = function () {
-//     var reader = new FileReader();
-
-//     reader.onload = function (e) {
-//         // get loaded data and render thumbnail.
-//         $("#preview3").css("display", "block");
-//         document.getElementById("preview3").src = e.target.result;
-//     };
-
-//     // read the image file as a data URL.
-//     reader.readAsDataURL(this.files[0]);
-// };
-
-// document.getElementById("id_form-4-file").onchange = function () {
-//     var reader = new FileReader();
-
-//     reader.onload = function (e) {
-//         // get loaded data and render thumbnail.
-//         $("#preview4").css("display", "block");
-//         document.getElementById("preview4").src = e.target.result;
-//     };
-
-//     // read the image file as a data URL.
-//     reader.readAsDataURL(this.files[0]);
-// };
-
-
 
 </script>
 
@@ -437,19 +275,5 @@ $(function() {
 </script>
 {% endfor %}
 
-
-<!-- <script>
-var data = []
-{% for keyword in keywords %}
-data.push('{{keyword}}'); // Programatically-generated options array with > 5 options
-{% endfor %}
-var placeholder = "select";
-$(".mySelect").select2({
-    data: data,
-    placeholder: placeholder,
-    allowClear: false,
-    minimumResultsForSearch: 5
-});
-</script> -->
 
 {% endblock %}

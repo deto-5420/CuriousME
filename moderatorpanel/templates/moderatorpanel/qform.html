@@ -1,6 +1,6 @@
 {% load widget_tweaks %}
 
-{% for field in form %}
+{% for field in question_form %}
   <div class="form-group{% if field.errors %} has-error{% endif %}">
     <label for="{{ field.id_for_label }}">{{ field.label }}</label>
     {% render_field field class="form-control" %}
@@ -9,3 +9,50 @@
     {% endfor %}
   </div>
 {% endfor %}
+
+<div id='choices' style="display: none;">
+  <div style="padding: 20px;">
+  {{ option_form.management_form }} 
+  {% for form in option_form %}
+  
+    <span id="choice-{{forloop.counter}}">
+      <p>
+        {{form}}
+      </p>   
+    </span>
+
+  {% endfor %}
+  
+    <button onclick="add_choice()" type="button" id="add-choice" class="mb-2 btn-transition btn btn-sm btn-outline-primary">Add More Choice
+    </button>
+  
+  </div>
+</div>
+
+{{file_form.as_p}}
+
+{% for file in files %}
+<a href="{{file.file.url}}">
+  <img src="{{file.file.url}}" alt="" height="100" width="100">
+</a>  
+{% endfor %}
+<div class = "col-md-6" id = "f_preview"></div>
+
+<script>
+   $("#id_question_type").prop("style", "pointer-events: none;");
+  function showChoice()
+{
+    qtype = document.getElementById('id_question_type').value
+    if(qtype == 'poll'){
+      document.getElementById('choices').style.display = 'block'
+      $('[name="form-0-choice"]').prop('required',true);
+      $('[name="form-1-choice"]').prop('required',true);
+      $('#choices input').attr({'class':'ml-1'})
+
+    }
+    else if(qtype == 'normal'){
+        document.getElementById('choices').style.display = 'none';
+    }
+}
+showChoice();
+</script>

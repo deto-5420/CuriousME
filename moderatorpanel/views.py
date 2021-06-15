@@ -1,8 +1,8 @@
 from django.shortcuts import render, redirect, get_object_or_404
-from questions.models import Question, Options, QuestionMedia, Category
+from questions.models import Question, Options, QuestionMedia, Category, BookmarkQuestion
 from questions.keywords_models import Keywords
 from accounts.models import User
-# from adminpanel.models import QuestionChangeRequest
+from adminpanel.models import SpammedQuestion, SpammedAnswer, SpammedReply
 from answers.models import Answer
 from replies.models import Replies
 from accounts.models import Profile
@@ -15,6 +15,7 @@ from django.contrib.auth import login, authenticate, get_user_model, logout
 from django.urls import reverse
 from django.http import HttpResponseRedirect, HttpResponse, JsonResponse
 from django.contrib import messages
+from django.forms import inlineformset_factory, modelformset_factory
 
 from collectanea.global_checks import user_is_active
 from collectanea.globals import ALLOWED_FILE_FORMATS, MAX_MEDIA_ALLOWED, MAX_MEDIA_SIZE
@@ -27,13 +28,25 @@ from nltk.corpus import stopwords
 from nltk.tokenize import word_tokenize 
 # Create your views here.
 
-def login_view(request):
+def check_user_active(request):
+	if not user_is_active(request):
+		messages.error(request, 'Your account is deactivated. Contact administrator.')
+		return HttpResponseRedirect(reverse('moderator:login'))
 
+def login_page(request):
+	if request.user.is_authenticated:
+		return HttpResponseRedirect(reverse('moderator:moderator_panel'))
+	
+	return render(request, 'moderatorpanel/login.html')
+
+	
+def login_view(request):
+	
 	if not request.method == 'POST':
 		messages.error(request, 'Not a POST request')
 		return HttpResponseRedirect(reverse('moderator:login'))
 
-	email = request.POST['email']
+	email = request.POST['email'].lower()
 	password = request.POST['password']
 	UserModel = get_user_model()
 
@@ -50,7 +63,7 @@ def login_view(request):
 		if user.check_password(password):
 			usr_dict = UserModel.objects.filter(email=email).values().first()
 			usr_dict.pop('password')
-			login(request, user)
+			login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 			return HttpResponseRedirect(reverse('moderator:moderator_panel'))
 		else:
 			messages.error(request, 'Invalid password')
@@ -60,124 +73,118 @@ def login_view(request):
 		messages.error(request, 'Invalid email')
 		return HttpResponseRedirect(reverse('moderator:login'))
 
-
-
 def logout_view(request):
 	logout(request)
 	return HttpResponseRedirect(reverse('moderator:login'))	
 
+def MyPaginator(request, questions, obj_count):
+	paginator = Paginator(questions, obj_count)
+	page_number = request.GET.get('page')
 
-# @user_is_active
+	try:
+		page_obj = paginator.page(page_number)
+	except PageNotAnInteger:
+		page_obj = paginator.page(1)
+	except EmptyPage:
+		page_obj = paginator.page(paginator.num_pages)
+
+	return page_obj
+
 @login_required(login_url = 'moderator:login')
 def getQuestions(request, s_id):
 
-	if not user_is_active(request):
-		messages.error(request, 'Your account is deactivated. Contact administrator.')
-		return HttpResponseRedirect(reverse('moderator:login'))
+	check_user_active(request)
 
 	if s_id == 0: #for all questions
 		search_text = request.GET.get('search')
 		if search_text:
-			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(author__fullname__icontains=search_text) | Q(author__user__username__icontains=search_text), status='open')
-			options = Options.objects.filter(question__id__in = questions.all())
-			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
-
-			# print(questions)
-
+			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(keywords_associated__name__icontains=search_text), status='open').order_by('-created_at')
+			paginated_questions = MyPaginator(request, questions, 21)
+			options = Options.objects.filter(question__id__in = paginated_questions.object_list)
+			return render(request, 'moderatorpanel/get_questions.html', {'questions':paginated_questions,'options':options})
+			
 		else:
-			questions = Question.objects.filter(status="open")
-			options = Options.objects.filter(question__id__in = questions.all())
-
-		# print(str(questions[1].keywords_associated).split('.')[1])
-
-
-
-		if request.is_ajax():
-			# html = render_to_string(
-			# 	template_name = "moderatorpanel/get_questions.html", 
-			# 	context = {"questions": questions},
-			# )
-
-			# data_dict = {"html_from_view": html}
-
-			data = {
-				'questions':questions
-			}
-
-			return JsonResponse(data)
-		return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+			questions = Question.objects.filter(status="open").order_by('-created_at')
+			paginated_questions = MyPaginator(request, questions, 21)
+			options = Options.objects.filter(question__id__in = paginated_questions.object_list)
+		return render(request, 'moderatorpanel/get_questions.html', {'questions':paginated_questions,'options':options})
 
 	if s_id == 1: #for my open questions
 		user = request.user
 		# print(user)
 		search_text = request.GET.get('search')
-		if search_text:
-			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(author__fullname__icontains=search_text) | Q(author__user__username__icontains=search_text), status="open")
-			options = Options.objects.filter(question__id__in = questions.all())
-			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
 		profile = Profile.objects.get(user = user)
-		questions = Question.objects.filter(author = profile, status = 'open')
-		options = Options.objects.filter(question__id__in = questions.all())
+		if search_text:
+			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(keywords_associated__name__icontains=search_text), status="open", author = profile).order_by('-created_at')
+			paginated_questions = MyPaginator(request, questions, 21)
+			options = Options.objects.filter(question__id__in = paginated_questions.object_list)
+			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+		questions = Question.objects.filter(author = profile, status = 'open').order_by('-created_at')
+		paginated_questions = MyPaginator(request, questions, 21)
+		options = Options.objects.filter(question__id__in = paginated_questions.object_list)
 
-		return render(request, 'moderatorpanel/get_questions.html', {'questions':questions, 'options':options})
+		return render(request, 'moderatorpanel/get_questions.html', {'questions':paginated_questions, 'options':options})
 
 	if s_id == 2: #for my pending questions
 		user = request.user
 		# print(user)
 		search_text = request.GET.get('search')
-		if search_text:
-			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(author__fullname__icontains=search_text) | Q(author__user__username__icontains=search_text), status="pending")
-			options = Options.objects.filter(question__id__in = questions.all())
-			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
 		profile = Profile.objects.get(user = user)
-		questions = Question.objects.filter(author = profile, status = 'pending')
-		options = Options.objects.filter(question__id__in = questions.all())
+		if search_text:
+			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(keywords_associated__name__icontains=search_text), status="pending", author = profile).order_by('-created_at')
+			paginated_questions = MyPaginator(request, questions, 21)
+			options = Options.objects.filter(question__id__in = paginated_questions.object_list)
+			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+		questions = Question.objects.filter(author = profile, status = 'pending').order_by('-created_at')
+		paginated_questions = MyPaginator(request, questions, 21)
+		options = Options.objects.filter(question__id__in = paginated_questions.object_list)
 
-		return render(request, 'moderatorpanel/get_questions.html', {'questions':questions, 'options':options})
+		return render(request, 'moderatorpanel/get_questions.html', {'questions':paginated_questions, 'options':options})
 
 	if s_id == 3: # for my deleted questions
 		user = request.user
 		# print(user)
 		search_text = request.GET.get('search')
-		if search_text:
-			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(author__fullname__icontains=search_text) | Q(author__user__username__icontains=search_text), status="deleted")
-			options = Options.objects.filter(question__id__in = questions.all())
-			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
 		profile = Profile.objects.get(user = user)
-		questions = Question.objects.filter(author = profile, status = 'deleted')
-		options = Options.objects.filter(question__id__in = questions.all())
+		if search_text:
+			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(keywords_associated__name__icontains=search_text), status="deleted", author = profile).order_by('-created_at')
+			paginated_questions = MyPaginator(request, questions, 21)
+			options = Options.objects.filter(question__id__in = paginated_questions.object_list)
+			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+		questions = Question.objects.filter(author = profile, status = 'deleted').order_by('-created_at')
+		paginated_questions = MyPaginator(request, questions, 21)
+		options = Options.objects.filter(question__id__in = paginated_questions.object_list)
 		
-		return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+		return render(request, 'moderatorpanel/get_questions.html', {'questions':paginated_questions,'options':options})
 
 	if s_id == 4: #waiting
 		user = request.user
 		search_text = request.GET.get('search')
-		if search_text:
-			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(author__fullname__icontains=search_text) | Q(author__user__username__icontains=search_text), status="waiting")
-			options = Options.objects.filter(question__id__in = questions.all())
-			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
 		profile = Profile.objects.get(user = user)
-		questions = Question.objects.filter(author = profile, status = 'waiting')
-		options = Options.objects.filter(question__id__in = questions.all())
+		if search_text:
+			questions = Question.objects.filter( Q(content__icontains=search_text) | Q(keywords_associated__name__icontains=search_text), status="waiting", author = profile).order_by('-created_at')
+			paginated_questions = MyPaginator(request, questions, 21)
+			options = Options.objects.filter(question__id__in = paginated_questions.object_list)
+			return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+		questions = Question.objects.filter(author = profile, status = 'waiting').order_by('-created_at')
+		paginated_questions = MyPaginator(request, questions, 21)
+		options = Options.objects.filter(question__id__in = paginated_questions.object_list)
 		
-		return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+		return render(request, 'moderatorpanel/get_questions.html', {'questions':paginated_questions,'options':options})
 
 
 @login_required(login_url = 'moderator:login')
 def index(request):
 
-	if not user_is_active(request):
-		messages.error(request, 'Your account is deactivated. Contact administrator.')
+	check_user_active(request)
+	if not request.user.is_moderator:
+		messages.error(request, 'You are not a moderator')
 		return HttpResponseRedirect(reverse('moderator:login'))
-
-	user = request.user
-	profile = Profile.objects.get(user = user)
-	recent_questions = Question.objects.filter(author = profile, status = 'open').order_by('-created_at')
+	profile = Profile.objects.get(user = request.user)
+	recent_questions = Question.objects.filter(author = profile, status = 'open').order_by('-created_at')[:6]
 	recent_options = Options.objects.filter(question__id__in = recent_questions.all())
 
-	keywords = Keywords.objects.all()
-
-	all_questions = Question.objects.filter(author = profile).order_by('created_at')
+	all_questions = Question.objects.filter(author = profile).order_by('-created_at')
 
 	questions = Question.objects.filter(author = profile, status='open')
 	options = Options.objects.filter(question__id__in = recent_questions.all())
@@ -187,7 +194,7 @@ def index(request):
 	replies = Replies.objects.filter(answer__id__in = answers.all())
 	replies_count = replies.count()
 
-	paginator = Paginator(all_questions, 5)
+	paginator = Paginator(all_questions, 10)
 	page_number = request.GET.get('page')
 
 	try:
@@ -199,6 +206,7 @@ def index(request):
 
 	# print(question_count)
 	for_front = {
+		'profile':profile,
 		'recent_questions':recent_questions,
 		'recent_options':recent_options,
 		'questions':questions,
@@ -207,7 +215,6 @@ def index(request):
 		'answer_count':answer_count,
 		'replies_count':replies_count,
 		'page_obj':page_obj,
-		'keywords':keywords,
 	}
 	return render(request, 'moderatorpanel/index.html', for_front)
 
@@ -230,180 +237,173 @@ def return_keyword(request):
 	if request.method == 'POST':
 		k = request.POST['keyword']
 		# key={}
+		if len(k) > 20:
+			return JsonResponse({'Error':'Key could not be more than 20 chars'})
 		key, created = Keywords.objects.get_or_create(name=k)
 		if created:
-			return JsonResponse({'Success':'Created'})
+			return JsonResponse({'Success':'Created', 'id':key.id})
+		else:
+			return JsonResponse({'Success':'Already there'})
 
+def suggestions(questions, q):
+	print(questions)
+	for question in questions:
+		X = question['content'].lower()
+		print("X", X)
+		Y = q.lower()
+		print('Y', Y)
 
+		#tokenization
+		X_list = word_tokenize(X)
+		Y_list = word_tokenize(Y)
 
-@login_required(login_url = 'moderator:login')	
-def question_form(request):
+		#sw contains the stopwords
+		sw = stopwords.words('english')
+		l1=[]; l2=[]
+
+		#removing stopwords from the string
+		X_set = {w for w in X_list if not w in sw}
+		Y_set = {w for w in Y_list if not w in sw}
+
+		#form a set containing keywords of both string
+		rvector = X_set.union(Y_set)
+		for w in rvector:
+			if w in X_set: l1.append(1) #create a vector
+			else: l1.append(0)
+			if w in Y_set: l2.append(1)
+			else: l2.append(0)
+		c=0 
+
+		#cosine formula
+		for i in range(len(rvector)):
+			c += l1[i]*l2[i]
+		cosine = c / float((sum(l1)*sum(l2))**0.5)
+		print('similarity', cosine)
+		if cosine > 0.5:
+			data = {
+				'question':str("<a href='{}' target='_blank'>".format(reverse('moderator:answer_page', kwargs={'qid':question['id']})))+"<li>"+question['content']+"<li>"+"</a>",
+				'id':question['id']
+			}
+			return JsonResponse(data)
+		else:
+			pass
+
+@login_required(login_url = 'moderator:login')
+def question_suggestion(request):
 
 	if not user_is_active(request):
 		messages.error(request, 'Your account is deactivated. Contact administrator.')
 		return HttpResponseRedirect(reverse('moderator:login'))
-
-	if request.ajax() or request.method == 'GET':
+	# print("hello")
+	if request.method == 'GET':
 		print("Request is ajax")
-		q = request.GET('q')
-		p = request.GET('p')
+		q = request.GET.get('q')
+		p = request.GET.get('p')
 		print(q)
 
 		if q:
-			questions = Question.objects.filter(status="open", question_type = "normal")
-
+			# questions = Question.objects.filter(status="open", question_type = "normal").values('id', 'content')
+			# print("this is q")
+			# data = suggestions(questions, q)
+			# return data
+			data = []
+			questions = Question.objects.filter(status='open', question_type='normal', content__icontains=q).values('id', 'content').order_by('-created_at')
 			for question in questions:
-				X = question.content.lower()
-				Y = q.lower()
+				# data['question_{}'.format(question['id'])] = str("<a href='{}' target='_blank'>".format(reverse('moderator:answer_page', kwargs={'qid':question['id']})))+"<li>"+question['content']+"<li>"+"</a>"
+				data.append(str("<li>"+"<a href='{}' target='_blank'>".format(reverse('moderator:answer_page', kwargs={'qid':question['id']})))+question['content']+"</a>"+"<li>")
+				print(data)
+			return JsonResponse(data, safe=False)
 
-				#tokenization
-				X_list = word_tokenize(X)
-				Y_list = word_tokenize(Y)
+		elif p:
+			# questions = Question.objects.filter(status="open", question_type = "poll").values('id', 'content')
+			# print("this is p")
+			# data = suggestions(questions, p)
+			# return data
+			data = []
+			questions = Question.objects.filter(status='open', question_type='poll', content__icontains=p).values('id', 'content').order_by('-created_at')
+			for question in questions:
+				# data['question_{}'.format(question['id'])] = str("<a href='{}' target='_blank'>".format(reverse('moderator:answer_page', kwargs={'qid':question['id']})))+"<li>"+question['content']+"<li>"+"</a>"
+				data.append(str("<li>"+"<a href='/moderator/get_questions/1#poll_{}' target='_blank'>".format(question['id']))+question['content']+"</a>"+"<li>")
+				print(data)
+			return JsonResponse(data, safe=False)
+		else:
+			pass
 
-				#sw contains the stopwords
-				sw = stopwords.words('english')
-				l1=[]; l2=[]
+		return JsonResponse("None", safe=False)
+	return JsonResponse("None", safe=False)
 
-				#removing stopwords from the string
-				X_set = {w for w in X_list if not w in sw}
-				Y_set = {w for w in Y_list if not w in sw}
-
-				#form a set containing keywords of both string
-				rvector = X_set.union(Y_set)
-				for w in rvector:
-					if w in X_set: l1.append(1) #create a vector
-					else: l1.append(0)
-					if w in Y_set: l2.append(1)
-					else: l2.append(0)
-				c=0
-
-				#cosine formula
-				for i in range(len(rvector)):
-					c += l1[i]*l2[i]
-				cosine = c / float((sum(l1)*sum(l2))**0.5)
-				print('similarity', cosine)
-				if cosine > 0.3:
-					data = {
-						'question':"<li>"+question.content+'<li>'
-					}
-					return JsonResponse(data)
-
-		if p:
-			polls = Question.objects.filter(status = "open", question_type = "poll")
-
-			for question in polls:
-				X = question.content.lower()
-				Y = q.lower()
-
-				#tokenization
-				X_list = word_tokenize(X)
-				Y_list = word_tokenize(Y)
-
-				#sw contains the stopwords
-				sw = stopwords.words('english')
-				l1=[]; l2=[]
-
-				#removing stopwords from the string
-				X_set = {w for w in X_list if not w in sw}
-				Y_set = {w for w in Y_list if not w in sw}
-
-				#form a set containing keywords of both string
-				rvector = X_set.union(Y_set)
-				for w in rvector:
-					if w in X_set: l1.append(1) #create a vector
-					else: l1.append(0)
-					if w in Y_set: l2.append(1)
-					else: l2.append(0)
-				c=0
-
-				#cosine formula
-				for i in range(len(rvector)):
-					c += l1[i]*l2[i]
-				cosine = c / float((sum(l1)*sum(l2))**0.5)
-				print('similarity', cosine)
-				if cosine > 0.3:
-					data = {
-						'question':"<li>" + question.content + "<li>"
-					}
-					return JsonResponse(data)
-
-	question_form = QuestionForm(auto_id = 'id_question_%s')
-	option_form = OptionForm(auto_id = 'id_poll_%s')
-	question = Question.objects.filter(author = Profile.objects.get(user = request.user)).order_by('-created_at').first()
-	options = Options.objects.filter(question = question)
-	# keywords = Keywords.objects.all()
-	categories = Category.objects.all()
-	media_form = QuestionMediaForm(question = question)
-
-	# # print(keywords)
-	for_front = {
-		# 'keywords':keywords,
-		'categories':categories,
-		'question_form':question_form,
-		'option_form':option_form,
-		'question':question,
-		'options':options,
-		'media_form':media_form,
-	}
-	return render(request, 'moderatorpanel/question_form.html', for_front)
 
 def file_upload(request, files, question):
 	if len(files) > MAX_MEDIA_ALLOWED:
 		messages.error(request, "Max 10 files allowed")
 		return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 	for file in files:
-		file_type = file.content_type 
-		print(file_type) 
-		if file and file.size > MAX_MEDIA_SIZE:
+		file_type = file.content_type
+		if file.size < MAX_MEDIA_SIZE:
 			if file_type in ALLOWED_FILE_FORMATS:
 				f = QuestionMedia(file=file, question=question, file_type=file_type)
-				print(f)
 				f.save()
 			else:
-				messages.error(request, "File Size Error. Max 10MB Allowed")
+				messages.error(request, "File type not supported")
 				return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 		else:
-			messages.error(request, "File type not supported")
+			messages.error(request, "File Size Error. Max 10MB Allowed")
 			return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
+@login_required(login_url = 'moderator:login')
 def add_question(request):
+	check_user_active(request)
 	if request.method == 'POST':
-		request.POST._mutable = True
 		post = request.POST.copy()
-		for keyword in post.getlist('keywords_associated'):
+		# print("Copied POST", post._mutable)
+		# print("Keywords list", post.getlist('keywords_associated'))
+		keylist = post.getlist('keywords_associated')
+		print("keylist", keylist)
+		for keyword in keylist:
 			print(keyword)
 			try:
-				get_object_or_404(Keywords, pk=keyword)
+				keyword = int(keyword)
+				print(keyword, "an int")
+				pass
 			except:
-				key = Keywords.objects.create(name = keyword)
-				post.getlist('keywords_associated').remove(keyword)
-				print('Keyword removed:', keyword)
-				post.setlist('keywords_associated', key.id)
-				# post.setlist('keywords_associated', key.id).append('keywords_associated', key.id)
-				print(post)
-				print("keyword created and added to request obj, ID: ", key.id )
-		request.POST = post
-		request.POST._mutable = False
-			
-		print(request.POST)
-		form = QuestionForm(request.POST)
-		fform = QuestionMediaForm(request.POST, request.FILES)
-		print(form.is_valid(), fform.is_valid())
-		print(form.errors)
+				print(keyword, "is a string")
+				key = Keywords.objects.get(name = keyword)
+				index = keylist.index(keyword)
+				keylist.remove(keyword)
+				keylist.insert(index, key.id)
+				print("updated keylist", keylist)
+		post.setlist('keywords_associated', keylist)
+		# print("Updated Keywords list", post.getlist('keywords_associated'))
+
+		
+		# print("Original POST", request.POST)
+		form = QuestionForm(post)
+		fform = QuestionMediaForm(post, request.FILES)
+		# print(form.is_valid(), fform.is_valid())
+		# print(form.errors)
 		if form.is_valid() and fform.is_valid():
 			question = form.save(commit=False)
-			question.question_type = 'normal'
 			question.status = 'waiting'
-			user = User.objects.get(id = request.user.id)
-			profile = Profile.objects.get(user = user)
+			# user = User.objects.get(id = request.user.id)
+			profile = Profile.objects.get(user = request.user.id)
 			question.author = profile
-			print("Form valid pass")
+			# print("Form valid pass")
 			question.save()
 			form.save_m2m()
 			# print("Keyword for loop pass")
 
+			if form.cleaned_data['question_type'] == 'poll':
+				OptionFormset = inlineformset_factory(Question, Options, fields=('choice',), max_num=4, min_num=2, validate_min=True, validate_max=True)
+				oformset = OptionFormset(post)
+				if oformset.is_valid():
+					for inline_form in oformset:
+						if inline_form.cleaned_data != {}:
+							choice = inline_form.save(commit=False)
+							choice.question = question
+							choice.save()
+
 			files = request.FILES.getlist('file')
-			print(files)
+			# print(files)
 			file_upload(request, files, question)
 
 			return HttpResponseRedirect(reverse('moderator:moderator_panel'))
@@ -412,9 +412,9 @@ def add_question(request):
 			return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 		
 	else:
-		OptionFormset = formset_factory(OptionForm, extra=2, min_num=2, validate_min=True)
+		OptionFormset = inlineformset_factory(Question, Options, fields=('choice',), max_num=4, min_num=2, validate_min=True, validate_max=True, can_delete=False)
 		qform = QuestionForm()
-		cformset = OptionFormset()
+		cformset = OptionFormset(auto_id=False)
 		fform = QuestionMediaForm()
 		context = {
 			'question_form':qform,
@@ -422,150 +422,53 @@ def add_question(request):
 			'file_form':fform,
 		}
 		return render(request, 'moderatorpanel/question_form.html', context)
-
-		
-def add_poll(request):
-	OptionFormset = formset_factory(OptionForm, extra=2, min_num=2, validate_min=True)
-	if request.method == 'POST':
-		form = QuestionForm(request.POST)
-		oformset = OptionFormset(request.POST)
-		fform = QuestionMediaForm(request.POST, request.FILES)
-		if all([form.is_valid(), oformset.is_valid(), fform.is_valid()]):
-			poll = form.save(commit=False)
-			poll.question_type = "poll"
-			user = User.objects.get(id = request.user.id)
-			profile = Profile.objects.get(user = user)
-			poll.author = profile
-			poll.save()
-			form.save_m2m()
-
-			
-			for inline_form in oformset:
-				choice = inline_form.save(commit=False)
-				choice.question = poll
-				choice.save()
-
-			files = request.FILES.getlist('file')
-			print(files)
-			file_upload(request, files, poll)
-			return HttpResponseRedirect(reverse('moderator:moderator_panel'))
-		else:
-			return redirect('moderator:question_form')
 	
-
-
-@login_required(login_url = 'moderator:login')	
-def add_keyword(request):
-	if request.method == 'POST':
-		addkeyword = request.POST['addkeyword']
-		# print(addkeyword)
-		Keywords.objects.create(name = addkeyword)
-		current_url = request.resolver_match.url_name
-		# print(current_url)
-		return redirect(current_url)
-	else:
-		return HttpResponse("Not a post request")
-
 @login_required(login_url = "moderator:login")
 def delete_question(request, qid):
-	# if request.method == 'POST' and request.user.is_authenticated and request.user.is_moderator:
-	question = Question.objects.get(id = qid)
-	if question is None:
-		print("question is none")
-		# message.error('Wrong question ID')
-		return HttpResponseRedirect(reverse('moderator:moderator_panel'))
+	check_user_active(request)
+	if request.user.is_moderator:
+		question = Question.objects.get(id = qid)
+		if question is None:
+			print("question is none")
+			# message.error('Wrong question ID')
+			return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
+		else:
+			question.status = 'deleted'
+			BookmarkQuestion.objects.filter(question_id = question).delete()
+			question.save()
+			print("question status changed to deleted")
+			return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 	else:
-		question.status = 'pending'
-		question.save()
-		print("question status changed to pending")
+		# messages.error('Error')
 		return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
-	# else:
-	# 	# messages.error('Error')
-	# 	return HttpResponseRedirect(reverse('moderator:moderator_panel'))
 
-# def post_question(request):
-# 	if request.method == 'POST' and request.user.is_authenticated and request.user.is_moderator:
-		
-# 		f = QuestionForm(request.POST)
-# 		question = f.save(commit=False)
-# 		question.author = Profile.objects.get(user = request.user)
-# 		question.question_type = 'normal'
-# 		question.save()
-# 		f.save_m2m()
-
-# 		# question = request.POST['question']
-# 		# category = request.POST['category']
-# 		# c_id = Category.objects.get(name=category)
-# 		# # keywords = request.POST['keyword']
-# 		# file = request.POST['file']
-# 		# qid = Question.objects.create(question = question, category = c_id, )
-# 		# if file:
-# 		# 	QuestionMedia.objects.create(file = file, question = qid, )
-# 		return HttpResponseRedirect(reverse('moderator:moderator_panel'))
-# 	else:
-# 		messages.error(request, 'Error')
-# 		return HttpResponseRedirect(reverse('moderator:moderator_panel'))
-
-
-# def post_poll(request):
-# 	if request.method == 'POST' and request.user.is_authenticated and request.user.is_moderator:
-		
-# 		f = QuestionForm(request.POST)
-# 		question = f.save(commit=False)
-# 		question.author = Profile.objects.get(user = request.user)
-# 		question.question_type = 'poll'
-# 		question.save()
-# 		f.save_m2m()
-
-# 		# question = request.POST['question']
-# 		# category = request.POST['category']
-# 		# c_id = Category.objects.get(name=category)
-# 		# # keywords = request.POST['keyword']
-# 		# file = request.POST['file']
-# 		# qid = Question.objects.create(question = question, category = c_id, )
-# 		# if file:
-# 		# 	QuestionMedia.objects.create(file = file, question = qid, )
-# 		return HttpResponseRedirect(reverse('moderator:moderator_panel'))
-# 	else:
-# 		messages.error(request, 'Error')
-# 		return HttpResponseRedirect(reverse('moderator:moderator_panel'))
-
-# def post_option(request):
-# 	question = Question.objects.filter(author = Profile.objects.get(user = request.user)).order_by('-created_at').first()
-# 	Options.objects.create(question = question, choice = request.POST['choice'])
-# 	return	HttpResponseRedirect(reverse('moderator:moderator_panel'))
-#current_url = request.resolver_match.url_name for geting current url
-
-# def edit_question(request, qid):
-# 	if request.method == 'POST' and request.user.is_authenticated and request.user.is_moderator:
-# 		q_id = Question.objects.get(id = qid)
-# 		question = request.POST['question']
-# 		category = request.POST['category']
-# 		keywords = request.POST['keywords']
-# 		file = request.POST['file']
-# 		# QuestionChangeRequest.objects.create(quesiton = qid, user = request.user, )
-
-
+@login_required(login_url = 'moderator:login')
 def getQuestionsByCategory(request,c_id):
-	if not user_is_active(request):
-		messages.error(request, 'Your account is deactivated. Contact administrator.')
-		return HttpResponseRedirect(reverse('moderator:login'))
-	questions = Question.objects.filter(category = c_id)
-	return render(request, 'moderatorpanel/questioncategory.html', {'questions': questions})
+	check_user_active(request)
+	search_text = request.GET.get('search')
+	if search_text:
+		questions = Question.objects.filter(Q(content__icontains=search_text) | Q(keywords_associated__name__icontains=search_text), status="open", category = c_id).order_by('-created_at')
+		options = Options.objects.filter(question__id__in = questions.all())
+		return render(request, 'moderatorpanel/get_questions.html', {'questions':questions,'options':options})
+	questions = Question.objects.filter(category = c_id, status='open').order_by('-created_at')
+	paginated_questions = MyPaginator(request, questions, 21)
+	options = Options.objects.filter(question__id__in = paginated_questions.object_list)
+	return render(request, 'moderatorpanel/get_questions.html', {'questions': paginated_questions, 'options':options})
 
+@login_required(login_url = 'moderator:login')
 def categorypage(request):
-	if not user_is_active(request):
-		messages.error(request, 'Your account is deactivated. Contact administrator.')
-		return HttpResponseRedirect(reverse('moderator:login'))
-	category = Category.objects.all()
+	check_user_active(request)
+	category = Category.objects.filter(status = "Active").order_by('-created_at')
 	return render(request, 'moderatorpanel/category.html', {'category':category})
 
+@login_required(login_url = 'moderator:login')
 def answer_page(request, qid):
+	check_user_active(request)
 	question = Question.objects.get(id = qid)
-	answers = Answer.objects.filter(question_id = qid)[:2]
-	replies = Replies.objects.filter(answer__id__in = answers.all())[:2]
-	files = QuestionMedia(question = question)
-	print(files)
+	answers = Answer.objects.filter(question_id = qid).order_by('-created_at')[:5]
+	replies = Replies.objects.filter(answer__id__in = answers.all()).order_by('-created_at')[:5]
+	files = QuestionMedia.objects.filter(question = question)
+	# print('files' ,files)
 	for_front = {
 		'question':question,
 		'answers':answers,
@@ -575,31 +478,20 @@ def answer_page(request, qid):
 	return render(request, 'moderatorpanel/answer.html', for_front)
 
 
+@login_required(login_url = 'moderator:login')
 def replies(request, aid):
+	check_user_active(request)
+	replies = Replies.objects.filter(answer__id = aid).order_by("-created_at")
 
-	# question = Question.objects.get(id = qid)
-	# answers = Answer.objects.filter(question_id = qid)
-	replies = Replies.objects.filter(answer__id = aid).order_by("id")
-
-	# answer_paginator = Paginator(answers, 2)
-	# ans_page_number = request.GET.get('page')
-
-	# try:
-	# 	ans_obj = answer_paginator.page(ans_page_number)
-	# except PageNotAnInteger:
-	# 	ans_obj = answer_paginator.page(1)
-	# except EmptyPage:
-	# 	ans_obj = answer_paginator.page(paginator.num_pages)
-
-	replies_paginator = Paginator(replies, 2)
+	replies_paginator = Paginator(replies, 5)
 	replies_page_number = request.GET.get('page')
-
+	print(replies_page_number, replies_paginator.num_pages)
 	try:
 		replies_obj = replies_paginator.page(replies_page_number)
 	except PageNotAnInteger:
 		replies_obj = replies_paginator.page(1)
 	except EmptyPage:
-		replies_obj = replies_paginator.page(Paginator.num_pages)
+		replies_obj = replies_paginator.page(replies_paginator.num_pages)
 
 	reply_html = render_to_string('moderatorpanel/reply.html', {'replies_obj': replies_obj})
 
@@ -607,38 +499,147 @@ def replies(request, aid):
 		'reply_html': reply_html,
 		'has_next': replies_obj.has_next(),
 	}
-	print(reply_html)
+	# print(reply_html)
 	return JsonResponse(data)
+
+@login_required(login_url = 'moderator:login')
+def answers(request, qid):
+
+	check_user_active(request)
+	answers = Answer.objects.filter(question_id = qid).order_by('-created_at')
+	replies = Replies.objects.filter(answer__id__in = answers.all()).order_by('-created_at')[:2]
+	answer_paginator = Paginator(answers, 5)
+	ans_page_number = request.GET.get('page')
+	print(ans_page_number)
+	try:
+		ans_obj = answer_paginator.page(ans_page_number)
+	except PageNotAnInteger:
+		ans_obj = answer_paginator.page(1)
+	except EmptyPage:
+		ans_obj = answer_paginator.page(answer_paginator.num_pages)
+
+	ans_html = render_to_string('moderatorpanel/more_answers.html', {'answers': ans_obj, 'replies':replies})
+
+	data = {
+		'ans_html': ans_html,
+		'has_next': ans_obj.has_next(),
+	}
+	# print(reply_html)
+	return JsonResponse(data) 
 
 
 @login_required(login_url = 'moderator:login')
 def save_question_form(request, form, template_name):
+	check_user_active(request)
 	data = dict()
 	if request.method == 'POST':
-		# print(form.is_valid())
-		# if form.is_valid():
-		# 	form.save()
-		# 	data['form_is_valid'] = True
+		post = request.POST.copy()
+		# print("Copied POST", post._mutable)
+		# print("Keywords list", post.getlist('keywords_associated'))
+		keylist = post.getlist('keywords_associated')
+		for keyword in keylist:
+			try:
+				keyword = int(keyword)
+				print(keyword, "an int")
+			except:
+				print(keyword, "is a string")
+				key = Keywords.objects.filter(name = keyword).first()
+				keylist.remove(keyword)
+				keylist.append(key.id)
+				print("keylist", keylist)
+		post.setlist('keywords_associated', keylist)
+		# print("Updated Keywords list", post.getlist('keywords_associated'))
 
-		# else:
-		# 	print("not valid")
-		# 	data['form_is_valid'] = False
-		pass
+		
+		# print("Original POST", request.POST) 
+		qform = QuestionForm(post, instance=form['question'])
+		# print(form['question'])
+		fform = QuestionMediaForm(post, request.FILES, instance=form['question'])
+		# print(form.is_valid(), fform.is_valid())
+		# print(form.errors)
+		if qform.is_valid() and fform.is_valid():
+			question = qform.save(commit=False)
+			question.status = 'pending'
+			# user = User.objects.get(id = request.user.id)
+			profile = Profile.objects.get(user = request.user.id)
+			question.author = profile
+			# print("Form valid pass")
+			question.save()
+			qform.save_m2m()
+			# print("Keyword for loop pass")
 
-	context = {'form':form}
+			if qform.cleaned_data['question_type'] == 'poll':
+				OptionFormset = inlineformset_factory(Question, Options, fields=('choice',), max_num=4, min_num=2, validate_min=True, validate_max=True)
+				oformset = OptionFormset(post, instance=form['question'])
+				if oformset.is_valid():
+					deleted_choice = oformset.deleted_forms
+					for inline_form in oformset:
+						if inline_form.cleaned_data != {} and inline_form not in deleted_choice:
+							choice = inline_form.save(commit=False)
+							choice.question = question
+							choice.save()
+						else:
+							choice = inline_form.save(commit=False)
+							choice.delete()
+
+			files = request.FILES.getlist('file')
+			# print(files)
+			file_upload(request, files, question)
+			data['form_is_valid'] = True
+			
+		else:
+			data['form_is_valid'] = False
+		form['question_form']=qform
+		context = form
+		data['html_form'] = render_to_string('moderatorpanel/edit_question.html', context, request=request)
+		# messages.error(request, 'The question is edited and has been sent to admin for confirmation. You can find it under "Pending Questions".')
+		return JsonResponse(data)
+	
+	context = form
 	data['html_form'] = render_to_string(template_name, context, request=request)
+	
 	return JsonResponse(data)
 
 @login_required(login_url = 'moderator:login')
 def edit_question(request, qid):
+	check_user_active(request)
 	question = get_object_or_404(Question, id=qid)
-	if request.method == 'POST':
-		# form = CategoryForm(request.POST, request.FILES, instance=category)
-		pass
-	else:
-		form = QuestionForm(instance=question)
+	# print(question.content)
+	if request.user.id is not question.author.user.id:
+		messages.error(request, "You don't have rights to edit this question")
+		return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
+	OptionFormset = inlineformset_factory(Question, Options, fields=('choice',), max_num=4, min_num=2, validate_min=True, validate_max=True)
+	if request.method == 'POST':
+		# print(request.POST)
+		form = {
+			'question':Question.objects.filter(id=qid).first(),
+		}		
+	else:
+		qform = QuestionForm(instance = question)
+		cformset = OptionFormset(instance = question)
+		files_instance = QuestionMedia.objects.filter(question = question)
+		fform = QuestionMediaForm(instance = question) 
+		form = {
+			'question_form':qform,
+			'option_form':cformset,
+			'file_form':fform,
+			'files':files_instance,
+		}
 	return save_question_form(request, form, 'moderatorpanel/edit_question.html')
 
+def spam_answer(request, aid):
+	answer = Answer.objects.filter(id = aid).first()
+	SpammedAnswer.objects.create(answer = answer, by = Profile.objects.get(user = request.user.id))
+	answer.status = 'spammed'
+	print(answer)
+	print(answer.status)
+	answer.save()
+	return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
 
-
+def spam_reply(request, rid):
+	reply = Replies.objects.filter(id = rid).first()
+	SpammedReply.objects.create(reply = reply, by = Profile.objects.get(user = request.user.id))
+	reply.status = 'spammed'
+	reply.save()
+	return HttpResponseRedirect(request.META.get('HTTP_REFERER'))
