@@ -15,6 +15,10 @@ from django.core.exceptions import ValidationError
 from django.template.loader import render_to_string
 from django.utils.encoding import force_bytes, force_text
 from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.db.models import F, Count, Q
+from django.utils import timezone
+from django.http import HttpResponse
+from collections import OrderedDict
 from requests.exceptions import HTTPError
 from rest_framework import status
 from rest_framework.authtoken.models import Token
@@ -22,6 +26,7 @@ from rest_framework.decorators import api_view
 from rest_framework.generics import (CreateAPIView, DestroyAPIView,
                                      ListAPIView, RetrieveAPIView,
                                      UpdateAPIView)
+from rest_framework.pagination import LimitOffsetPagination
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.status import (HTTP_200_OK, HTTP_400_BAD_REQUEST,
@@ -35,352 +40,32 @@ from accounts.models import Profile, User
 from accounts.profile_serializer import ProfileSerializer, ViewProfileSerializer
 from questions.keywords_models import Keywords
 
-from .models import Question, Category, BookmarkQuestion, Like
-from .serializers import ( QuestionSerializer, QuestionDetailSerializer, 
+from .models import Question, Category, BookmarkQuestion, UserVotes, Like
+from .serializers import ( QuestionDetailSerializer, 
                             BookmarksSerializer, OtherQuestionsSerializer,
-                            BriefQuestionSerializer
+                            BriefQuestionSerializer,OptionSerializer,AnonQuestionsSerializer
                         )
-
+import pdfkit, json, math, os
 
 from answers.models import Answer
- 
+from replies.models import Replies
+from replies.serializers import BriefReplySerializer
+from answers.serializers import AnsSerializer
+
+from django.template.loader import get_template
+import pdfkit
+from django.http import HttpResponse
+
+    
 # from refund.models import Refund, SecurityRefund
 
 from collectanea.permission import AuthorizedPermission
 from collectanea.global_checks import check_user_status
 from collectanea.helpers import get_days, get_days_from_now
+#from adminpanel.dynamic_preferences_registry import QuestionLimit,AnswerLimit,ReplyLimit
 
-class PostQuestion(APIView):
-    """
-    post a question + payment check
-    NOTE: stripe not integrated.
-    """
-
-    permission_classes = (IsAuthenticated, AuthorizedPermission)
-
-    def post(self, request, *args, **kwargs):
-        question = request.data.get('question')
-        category_id = request.data.get('category')
-
-        try:
-            keywords = request.data.getlist('keywords')
-        except:
-            keywords = request.data.get('keywords')
-
-
-        user = self.request.user
-        profile = user.userAssociated.all().first()
-
-        # validity_days = get_days_from_now(validity_date) 
-
-        try:
-            # if validity_days > MAX_VALIDITY_DAYS or validity_days < 1:
-                # raise ValidationError("Validity can be of maximum 30 days and minimum 1 day.")
-
-            if len(question) > MAX_QUESTION_SIZE:
-                raise ValidationError("Question can be of maximum 200 characters.")
-
-            # if answer_limit<MIN_ANSWER_LIMIT or answer_limit>MAX_ANSWER_LIMIT:
-                # raise ValidationError("Answer limit should be between {} and {}".format(MIN_ANSWER_LIMIT, MAX_ANSWER_LIMIT))
-
-            category = Category.objects.filter(pk=int(category_id)).first()
-            if category is None:
-                raise ValidationError("Invalid category")
-
-            keywords_array = []
-            for i in range(len(keywords)):
-                keyword_obj = Keywords.objects.filter(pk=int(keywords[i])).first()
-
-                if keyword_obj is None:
-                    raise ValidationError("Invalid Keyword ID {}".format(keywords[i]))
-                    
-                keywords_array.append(keyword_obj)
-            
-        except Exception as e:
-            response = {
-                'message': "Failed",
-                'error': e,
-                'status': HTTP_400_BAD_REQUEST
-            }
-            return Response(response, status=HTTP_400_BAD_REQUEST)
-
-        # valid_date = datetime.strptime(validity_date, '%d/%m/%Y').date()
-
-        question_object = Question.objects.create(
-                                                    author = profile,
-                                                    content = question,
-                                                    category = category,
-                                                )
-        
-        question_object.keywords_associated.set(keywords_array)
-
-        # if is_anonymous or is_anonymous == 'true':
-            # question_object.is_anonymous = True
-        
-        # if reward_amount and int(reward_amount) > 0:
-        #     question_object.public = True
-        #     question_object.save()
-
-        #     reward_amount = int(reward_amount)
-
-        #     security_amount = SECURITY_AMOUNT_RATE*reward_amount/100
-        #     service_charge = SERVICE_CHARGE_RATE*reward_amount/100
-
-            # PaymentStatus.objects.create(
-            #                                 question_id = question_object,
-            #                                 reward_amount = reward_amount,
-            #                                 security_amount = security_amount,
-            #                                 service_charge = service_charge,
-            #                                 currency=currency,
-            #                             )
-
-        question_object.save()
-        print(question_object)
-        data = QuestionSerializer(question_object).data
-
-        response = {
-            'message': 'Sucess',
-            'body': data,
-            'status': HTTP_200_OK
-        }
-        return Response(response, status=HTTP_200_OK)
-
-class DeleteQuestion(APIView):
-    """
-    Delete paid and unaid question both.
-    If the question has been answered by someone then it can't be deleted.
-    NOTE: Incase of paid question refund will be initiated once.
-    """
-
-    permission_classes = (IsAuthenticated, AuthorizedPermission)
-
-    def delete(self, request, *args, **kwargs):
-        question_id = request.data.get('question_id')
-        user = self.request.user
-
-        profile = user.userAssociated.all().first()
-
-        try:
-            question = get_object_or_404(Question, pk=int(question_id))
-        except:
-            response = {
-                'message': 'Failed',
-                'error': [
-                    'Invalid questionID'
-                ],
-                'status': HTTP_400_BAD_REQUEST
-            }
-            return Response(response, status=HTTP_400_BAD_REQUEST)
-
-        try:    
-            if profile.pk != question.author.pk:
-                raise ValidationError('You are not the author of this question.')
-            
-            if question.status == 'deleted':
-                raise ValidationError('This question is already deleted.')
-
-            all_answers = question.questionAnswer.all()
-            if len(all_answers) > 0:
-                raise ValidationError('You cannot delete this question, this question has been answered by users.')
-
-        except Exception as e:
-            response = {
-                'message': 'Failed',
-                'error': e,
-                'status': HTTP_400_BAD_REQUEST
-            }
-            return Response(response, status=HTTP_400_BAD_REQUEST)
-    
-        # if not question.public:
-        #     # payment = question.questionPayment.all().first()
-        #     refund = Refund.objects.create(
-        #                                     question_id = question, 
-        #                                     # amount = payment.reward_amount + payment.service_charge,
-        #                                     # currency = payment.currency,
-        #                                     reason = 'Question deleted'
-        #                                 )
-            
-        #     security_refund = SecurityRefund.objects.create(
-        #                                     question_id = question,
-        #                                     # amount = payment.security_amount,
-        #                                     # currency = payment.currency,
-        #                                     reason = 'Question deleted'
-        #                                 )
-            
-        question.status = 'deleted'
-        question.save()
-
-        response = {
-            'message': 'success',
-            'body': [],
-            'status': HTTP_200_OK
-        }
-        return Response(response, status=HTTP_200_OK)
-        
-class EditQuestion(APIView):
-    """
-    edit questions 
-    """
-
-    permission_classes = (IsAuthenticated, AuthorizedPermission)
-
-    def post(self, request, *args, **kwargs):
-        question_content = request.data.get('question')
-        question_id = request.data.get('question_id')
-        category_id = request.data.get('category')
-
-        try:
-            keywords = request.data.getlist('keywords')
-        except:
-            keywords = request.data.get('keywords')
-
-        answer_limit = int(request.data.get('answer_limit'))
-        is_anonymous = request.data.get('is_anonymous')
-
-        user = self.request.user
-        profile = user.userAssociated.all().first()
-
-
-        try:
-            question = get_object_or_404(Question, pk=int(question_id))
-        except:
-            response = {
-                'message': 'Failed',
-                'error': [
-                    'Invalid QuestionID'
-                ],
-                'status': HTTP_400_BAD_REQUEST
-            }
-            return Response(response, status=HTTP_400_BAD_REQUEST)
-
-        try:
-            if question.author.pk != profile.pk:
-                raise ValidationError("You are not the author of this question, you cannot edit this question.")
-
-            all_answers = question.questionAnswer.all()
-            if len(all_answers) > 0 and not question.public:
-                raise ValidationError('You cannot delete this question, this question has been answered by users.')
-
-            # if validity_days > MAX_VALIDITY_DAYS or validity_days < 1:
-            #     raise ValidationError("Validity can be of maximum 30 days and minimum 1 day.")
-
-            if len(question_content) > MAX_QUESTION_SIZE:
-                raise ValidationError("Question can be of maximum 200 characters.")
-
-            if answer_limit<MIN_ANSWER_LIMIT or answer_limit>MAX_ANSWER_LIMIT:
-                raise ValidationError("Answer limit should be between {} and {}".format(MIN_ANSWER_LIMIT, MAX_ANSWER_LIMIT))
-
-            category = Category.objects.filter(pk=int(category_id)).first()
-            if category is None:
-                raise ValidationError("Invalid category")
-
-            keywords_array = []
-            for i in range(len(keywords)):
-                keyword_obj = Keywords.objects.filter(pk=int(keywords[i])).first()
-
-                if keyword_obj is None:
-                    raise ValidationError("Invalid Keyword ID {}".format(keywords[i]))
-                    
-                keywords_array.append(keyword_obj)
-            
-            question.keywords_associated.clear()
-
-        except Exception as e:
-            response = {
-                'message': "Failed",
-                'error': str(e),
-                'status': HTTP_400_BAD_REQUEST
-            }
-            return Response(response, status=HTTP_400_BAD_REQUEST)
-
-        # valid_date = datetime.strptime(validity_date, '%d/%m/%Y').date()
-
-        question.content = question_content
-        question.category = category
-        question.answer_limit = answer_limit
-                
-        question.keywords_associated.set(keywords_array)
-
-        
-        
-        # payment_check = question.questionPayment.all().first()
-
-        # if payment_check is None:
-            # question.public = True
-            # question.save()
-
-            # reward_amount = int(reward_amount)
-
-            # security_amount = SECURITY_AMOUNT_RATE*reward_amount/100
-            # service_charge = SERVICE_CHARGE_RATE*reward_amount/100
-
-            # PaymentStatus.objects.create(
-                                        #     question_id = question,
-                                        #     reward_amount = reward_amount,
-                                        #     security_amount = security_amount,
-                                        #     service_charge = service_charge,
-                                        #     currency=currency,
-                                        # )
-
-        question.save()
-
-        data = QuestionDetailSerializer(question).data
-
-        response = {
-            'message': 'Sucess',
-            'body': data,
-            'status': HTTP_200_OK
-        }
-        return Response(response, status=HTTP_200_OK)
-
-class GetMyQuestions(APIView):
-    """
-    get all questions posted by the logged in user.
-    """
-
-    permission_classes = (IsAuthenticated, AuthorizedPermission)
-
-    def get(self, request, *args, **kwargs):
-        user = self.request.user
-        profile = user.userAssociated.all().first()
-
-        status = request.data.get('status')
-
-        questions = profile.questionAuthor.all().filter(status=status)
-
-        if questions:
-            try:
-                paginator = LimitOffsetPagination()
-                paginated_list = paginator.paginate_queryset(questions, request)
-                data = QuestionDetailSerializer(paginated_list, context={ 'request': request }, many=True).data
-
-                response = {
-                    'message':'success',
-                    'links': {
-                        'next': paginator.get_next_link(),
-                        'previous': paginator.get_previous_link()
-                    },
-                    'count': paginator.count,
-                    'body':data,
-                    'status':HTTP_200_OK
-                }
-                return Response(response, status=HTTP_200_OK)
-            except:
-                data = QuestionDetailSerializer(questions, context={ 'request': request }, many=True).data
-
-                response = {
-                    'message':'success',
-                    'body':data,
-                    'status':HTTP_200_OK
-                }
-                return Response(response, status=HTTP_200_OK)
-
-        response = {
-            'message':'No questions found',
-            'body':[],
-            'status':HTTP_200_OK
-        }
-        return Response(response, status=HTTP_200_OK)
+question_limit=10 #QuestionLimit.default
+answer_limit=10 #AnswerLimit.default
 
 class AddBookmark(APIView):
     """
@@ -391,13 +76,12 @@ class AddBookmark(APIView):
 
     def post(self, request, *args, **kwargs):
         user = self.request.user
-        profile = user.userAssociated.all().first()
+        profile = user.userAssociated
 
         question_id = request.data.get('question_id')
-
-        try:
-            question = get_object_or_404(Question, pk=int(question_id))
-        except:
+        print(question_id)
+        question=Question.objects.filter(id=question_id,status__in=('open', 'Open'))
+        if not question.exists():
             response = {
                 'message': 'Failed',
                 'error': [
@@ -407,12 +91,12 @@ class AddBookmark(APIView):
             }
             return Response(response, status=HTTP_400_BAD_REQUEST)
 
-        check_bookmark = BookmarkQuestion.objects.filter(question_id=question).filter(user_id=profile).first()
+        check_bookmark = BookmarkQuestion.objects.filter(question_id=question[0]).filter(user_id=profile).first()
 
         if check_bookmark is None:
             BookmarkQuestion.objects.create(
                                             user_id = profile,
-                                            question_id = question
+                                            question_id = question[0]
                                         )
             message = 'Bookmark added'
         else:
@@ -435,9 +119,9 @@ class GetAllBookmarks(APIView):
 
     def get(self, request, *args, **kwargs):
         user = self.request.user
-        profile = user.userAssociated.all().first()
+        profile = user.userAssociated
 
-        all_bookmarks = profile.userBookmarked.all()
+        all_bookmarks = profile.userBookmarked.filter(question_id__status__in=("open","Open"))  
         
         if all_bookmarks:
             try:
@@ -457,6 +141,7 @@ class GetAllBookmarks(APIView):
                 }
                 return Response(response, status=HTTP_200_OK)
             except:
+                print(all_bookmarks)
                 data = BookmarksSerializer(all_bookmarks, context={ 'request': request }, many=True).data
 
                 response = {
@@ -481,13 +166,106 @@ class SearchQuestions(APIView):
 
     permission_classes = (IsAuthenticated, AuthorizedPermission)
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         search_text = request.data.get('text')
+        search_on=request.data.get('type').lower()
+        all_questions=None
+        print(search_on)
+        if search_on == "user":
+            objs=Profile.objects.filter(Q(fullname__icontains=search_text)  | Q(user__username__icontains=search_text))
+            objs=objs.filter(user__status="Activated")
+            if not objs.exists():
+                return Response({"message":"No result found"}, status=HTTP_200_OK)
+            # for i in range(len(objs )):
+            #     q=objs[i].questionAuthor.all().filter(status__in=('open','Open'))
+            #     if i==0:
+            #         all_questions=q
+            #     if q.exists():
+            #         all_questions=all_questions | q
+            
+            # if not all_questions:
+            #     return Response({"message":"No result found"}, status=HTTP_200_OK)
+            
+            try:
+                paginator = LimitOffsetPagination()
+                paginated_list = paginator.paginate_queryset(objs, request)
+                data = ViewProfileSerializer(paginated_list, context={ 'request': request }, many=True).data
+                
+                response = {
+                    'message':'success',
+                    'links': {
+                        'next': paginator.get_next_link(),
+                        'previous': paginator.get_previous_link()
+                    },
+                    'count': paginator.count,
+                    'body':data,
+                    'status':HTTP_200_OK
+                }
+                return Response(response, status=HTTP_200_OK)
+            except:
+                data = ViewProfileSerializer(objs, context={ 'request': request }, many=True).data
 
-        questions = Question.objects.filter(content__icontains=search_text)
-        data = OtherQuestionsSerializer(questions, context={ 'request': request }, many=True).data
+                response = {
+                    'message':'success',
+                    'body':data,
+                    'status':HTTP_200_OK
+                }
+                return Response(response, status=HTTP_200_OK)
 
-        return Response({'questions':data}, status=HTTP_200_OK)
+        elif search_on=="answer":
+
+            objs=Answer.objects.filter(Q(content__icontains=search_text),status__in=('open','Open') ).values_list("question_id")
+
+            if not objs:
+                return Response({"message":"No result found"}, status=HTTP_200_OK)
+            all_questions=Question.objects.filter(id__in=objs,status__in=('open','Open'))
+        elif search_on=="reply":
+            objs=Replies.objects.filter(Q(content__icontains=search_text),status__in=('open','Open')).values_list("answer")
+            if not objs:
+                return Response({"message":"No result found"}, status=HTTP_200_OK)
+
+            anser_obj=Answer.objects.filter(id__in=objs,status__in=('open','Open')).values_list("question_id")
+            if not anser_obj:
+                return Response({"message":"No result found"}, status=HTTP_200_OK)
+            all_Question.objects.filter(id__in=anser_obj,status__in=('open','Open'))
+        elif search_on=="question":  
+        
+            all_questions = Question.objects.filter(content__icontains=search_text,status__in=('open','Open'))
+            
+        if all_questions:
+            try:
+                paginator = LimitOffsetPagination()
+                paginated_list = paginator.paginate_queryset(all_questions, request)
+                data = OtherQuestionsSerializer(paginated_list, context={ 'request': request }, many=True).data
+                
+                response = {
+                    'message':'success',
+                    'links': {
+                        'next': paginator.get_next_link(),
+                        'previous': paginator.get_previous_link()
+                    },
+                    'count': paginator.count,
+                    'body':data,
+                    'status':HTTP_200_OK
+                }
+                return Response(response, status=HTTP_200_OK)
+            except:
+                print(all_questions,type(all_questions))
+                data = OtherQuestionsSerializer(all_questions, context={ 'request': request }, many=True).data
+
+                response = {
+                    'message':'success',
+                    'body':data,
+                    'status':HTTP_200_OK
+                }
+                return Response(response, status=HTTP_200_OK)
+
+        response = {
+            'message':'No Questions found',
+            'body':[],
+            'status':HTTP_200_OK
+        }
+        return Response(response, status=HTTP_200_OK)
 
 class GetQuestionByAnswer(APIView):
     """
@@ -496,7 +274,7 @@ class GetQuestionByAnswer(APIView):
 
     permission_classes = (IsAuthenticated, AuthorizedPermission)
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         answer_id = request.data.get('answer_id')
 
         try:
@@ -518,6 +296,36 @@ class GetQuestionByAnswer(APIView):
         }
         return Response(response, status=HTTP_200_OK)
 
+class GetQuestionByID(APIView):
+    """
+    get question by ID
+    """
+
+    permission_classes = (IsAuthenticated, AuthorizedPermission)
+
+    def post(self, request, *args, **kwargs):
+        question_id = request.data.get('question_id')
+
+        try:
+            question = get_object_or_404(Question, pk=int(question_id))
+        except:
+            response = {
+                'message': 'Failed',
+                'error': ['Invalid ID'],
+                'status': HTTP_400_BAD_REQUEST
+            }
+            return Response(response, status=HTTP_400_BAD_REQUEST)
+        
+        data = OtherQuestionsSerializer(question, context={ 'request': request }).data
+
+        response = {
+            'message': 'Success',
+            'body': data,
+            'status': HTTP_200_OK
+        }
+        return Response(response, status=HTTP_200_OK)
+
+
 class SuggestQuestions(APIView):
     """
     suggest a question on the basis of a input text.
@@ -526,7 +334,7 @@ class SuggestQuestions(APIView):
 
     permission_classes = (IsAuthenticated, AuthorizedPermission)
 
-    def get(self, request, *args, **kwargs):
+    def post(self, request, *args, **kwargs):
         search_text = request.data.get('text')
 
         questions = Question.objects.filter(content__icontains=search_text).filter(public=True)
@@ -542,17 +350,15 @@ class GetQuestionsByCategory(APIView):
     NOTE: sort_by unanswered, popular and price is remaining.
     """
 
-    permission_classes = (IsAuthenticated, AuthorizedPermission)
-
-    def get(self, request, *args, **kwargs):
+    #permission_classes = (IsAuthenticated, AuthorizedPermission)
+    pagination_class=LimitOffsetPagination
+    def post(self, request, *args, **kwargs):
         category_id = request.data.get('category_id')
-        status = request.data.get('status')
         sort_by = request.data.get('sort_by')
-        sort_in = request.data.get('sort_in')
 
-        user = self.request.user
-        profile = user.userAssociated.all().first()
-
+        # user = self.request.user
+        # profile = user.userAssociated
+        category=None
         try:
             category = get_object_or_404(Category, pk=int(category_id))
         except:
@@ -563,31 +369,345 @@ class GetQuestionsByCategory(APIView):
             }
             return Response(response, status=HTTP_400_BAD_REQUEST)
 
-        all_questions = Question.objects.filter(category=category)
-
-        if status == 'private':
-            all_questions = all_questions.filter(public=False)
-        elif status == 'public':
-            all_questions = all_questions.filter(public=True)
+        all_questions = Question.objects.filter(status__in=('open', 'Open'),category=category)
+        
         
         if sort_by == 'new':
-            if sort_in == 'increasing':
-                all_questions.filter('created_date')
-            else:
-                all_questions.filter('-created_date')
+            all_questions=all_questions.order_by('-created_at')
         
-        elif sort_by == 'validty_date':
-            if sort_in == 'increasing':
-                all_questions.filter('validty_date')
-            else:
-                all_questions.filter('-validty_date') 
+        elif sort_by == 'Popular':
+            all_questions=all_questions.annotate(fieldsum=F("answer_count")+F("upvote_count")).order_by("fieldsum")
+
+        elif sort_by == 'Unanswered':
+            all_questions=all_questions.filter(answer_count=0)
+        elif sort_by == 'Rising':
+            z_scores = {}
+            for ques in all_questions:
+                user_upvotes=list(ques.question_votes.filter(vote_type__in=("Upvote","upvote")).values('created_at').order_by('created_at').annotate(count=Count("created_at")))
+                if user_upvotes:
+                    date_today = datetime.now(timezone.utc)
+                    created_at = ques.created_at
+                    most_recent_used = user_upvotes[-1]['created_at']
+                    days_created_before = date_today-created_at
+                    days_created_before = int(days_created_before.days)
+                    not_used_days = days_created_before - len(user_upvotes)
+                    if days_created_before>0:
+                        avg_trend = len(user_upvotes)/(days_created_before)
+                    else:
+                        avg_trend = len(user_upvotes)
+
+                    std_deviation = sum(((int(c['count']) - avg_trend) ** 2) for c in user_upvotes)
+                    std_deviation += (((0-avg_trend)**2) * (not_used_days))
+
+                    if days_created_before>0:
+                        standard_deviation = math.sqrt(abs(std_deviation) / (days_created_before))
+                    else:
+                        standard_deviation = math.sqrt(abs(std_deviation))
+
+                    standard_deviation = -1*standard_deviation if std_deviation<0 else standard_deviation
+
+                    if most_recent_used-date_today == 0:            
+                        current_trend = user_upvotes[-1]['count']
+                    else:
+                        current_trend=0
+
+                    standard_deviation = 1 if standard_deviation==0 else standard_deviation
+                    z_score = (current_trend-avg_trend)/standard_deviation
+                    z_scores[ques.id] = z_score
+
+            sorted_question = OrderedDict(sorted(z_scores.items(), key = lambda kv:kv[1], reverse=True))
+            
+            all_questions =[]
+            for ques in sorted_question:
+                # if sorted_hashtags[hashtag]<0:
+                #     break
+                ques_obj=Question.objects.filter(id=ques).first()
+                all_questions.append(ques_obj)
+        else:
+            response = {
+                'message': 'Failed',
+                'error': ['Invalid sort by attribute :choices are ["new","Rising","Unanswered","Popular"]'],
+                'status': HTTP_400_BAD_REQUEST
+            }
+            return Response(response, status=HTTP_400_BAD_REQUEST)
+
+        if request.user.is_authenticated:
+            if all_questions:
+                try:
+                    paginator = LimitOffsetPagination()
+                    paginated_list = paginator.paginate_queryset(all_questions, request)
+                    data = OtherQuestionsSerializer(paginated_list, context={ 'request': request }, many=True).data
+                    
+                    response = {
+                        'message':'success',
+                        'links': {
+                            'next': paginator.get_next_link(),
+                            'previous': paginator.get_previous_link()
+                        },
+                        'count': paginator.count,
+                        'body':data,
+                        'status':HTTP_200_OK
+                    }
+                    return Response(response, status=HTTP_200_OK)
+                except:
+                    data = OtherQuestionsSerializer(all_questions, context={ 'request': request }, many=True).data
+
+                    response = {
+                        'message':'success',
+                        'body':data,
+                        'status':HTTP_200_OK
+                    }
+                    return Response(response, status=HTTP_200_OK)
+
+            response = {
+                'message':'No Questions found',
+                'body':[],
+                'status':HTTP_200_OK
+            }
+            return Response(response, status=HTTP_200_OK)
+        else:
+            all_questions=list(all_questions)
+            var=None
+            try:
+                var=all_questions[:question_limit]
+            except:
+                var=all_questions
+            data = AnonQuestionsSerializer(var, many=True).data
+
+            response = {
+                'message':'success',
+                'body':data,
+                'status':HTTP_200_OK
+            }
+            return Response(response, status=HTTP_200_OK)
+
+
+class GetQuestionsByKeyword(APIView):
+    """
+    get questions by category 
+    NOTE: sort_by unanswered, popular and price is remaining.
+    """
+
+    #permission_classes = (IsAuthenticated, AuthorizedPermission)
+    pagination_classes=LimitOffsetPagination
+    def post(self, request, *args, **kwargs):
+        keyword_id = request.data.get('keyword_id')
         
+        sort_by = request.data.get('sort_by')
+        # user = self.request.user
+        # profile = user.userAssociated
+        print("Check1")
+        try:
+            keyword = get_object_or_404(Keywords, pk=int(keyword_id))
+        except:
+            response = {
+                'message': 'Failed',
+                'error': ['Invalid keyword ID'],
+                'status': HTTP_400_BAD_REQUEST
+            }
+            return Response(response, status=HTTP_400_BAD_REQUEST)
+
+        all_questions =keyword.associatedKeywords.filter(status="open") #Question.objects.filter(category=category)
+
+        if sort_by == 'new':
+            all_questions=all_questions.order_by('-created_at')
+        
+        elif sort_by == 'Popular':
+            all_questions=all_questions.annotate(fieldsum=F("answer_count")+F("upvote_count")).order_by("fieldsum")
+
+        elif sort_by == 'Unanswered':
+            all_questions=all_questions.filter(answer_count=0)
+        elif sort_by == 'Rising':
+            z_scores = {}
+            for ques in all_questions:
+                user_upvotes=list(ques.question_votes.filter(vote_type__in=("Upvote","upvote")).values('created_at').order_by('created_at').annotate(count=Count("created_at")))
+                if user_upvotes:
+                    date_today = datetime.now(timezone.utc)
+                    created_at = ques.created_at
+                    most_recent_used = user_upvotes[-1]['created_at']
+                    days_created_before = date_today-created_at
+                    days_created_before = int(days_created_before.days)
+                    not_used_days = days_created_before - len(user_upvotes)
+                    if days_created_before>0:
+                        avg_trend = len(user_upvotes)/(days_created_before)
+                    else:
+                        avg_trend = len(user_upvotes)
+
+                    std_deviation = sum(((int(c['count']) - avg_trend) ** 2) for c in user_upvotes)
+                    std_deviation += (((0-avg_trend)**2) * (not_used_days))
+
+                    if days_created_before>0:
+                        standard_deviation = math.sqrt(abs(std_deviation) / (days_created_before))
+                    else:
+                        standard_deviation = math.sqrt(abs(std_deviation))
+
+                    standard_deviation = -1*standard_deviation if std_deviation<0 else standard_deviation
+
+                    if most_recent_used-date_today == 0:            
+                        current_trend = user_upvotes[-1]['count']
+                    else:
+                        current_trend=0
+
+                    standard_deviation = 1 if standard_deviation==0 else standard_deviation
+                    z_score = (current_trend-avg_trend)/standard_deviation
+                    z_scores[ques.id] = z_score
+
+            sorted_question = OrderedDict(sorted(z_scores.items(), key = lambda kv:kv[1], reverse=True))
+            
+            all_questions =[]
+            for ques in sorted_question:
+                # if sorted_hashtags[hashtag]<0:
+                #     break
+                ques_obj=Question.objects.filter(id=ques).first()
+                all_questions.append(ques_obj)
+        
+        else:
+            response = {
+                'message': 'Failed',
+                'error': ['Invalid sort by attribute :choices are ["new","Rising","Unanswered","Popular"]'],
+                'status': HTTP_400_BAD_REQUEST
+            }
+            return Response(response, status=HTTP_400_BAD_REQUEST)
+ 
+        if request.user.is_authenticated:
+            if all_questions:
+                try:
+                    paginator = LimitOffsetPagination()
+                    paginated_list = paginator.paginate_queryset(all_questions, request)
+                    data = OtherQuestionsSerializer(paginated_list, context={ 'request': request }, many=True).data
+                    
+                    response = {
+                        'message':'success',
+                        'links': {
+                            'next': paginator.get_next_link(),
+                            'previous': paginator.get_previous_link()
+                        },
+                        'count': paginator.count,
+                        'body':data,
+                        'status':HTTP_200_OK
+                    }
+                    return Response(response, status=HTTP_200_OK)
+                except:
+                    data = OtherQuestionsSerializer(all_questions, context={ 'request': request }, many=True).data
+
+                    response = {
+                        'message':'success',
+                        'body':data,
+                        'status':HTTP_200_OK
+                    }
+                    return Response(response, status=HTTP_200_OK)
+
+            response = {
+                'message':'No Questions found',
+                'body':[],
+                'status':HTTP_200_OK
+            }
+            return Response(response, status=HTTP_200_OK)
+        else:
+            all_questions=list(all_questions)
+            var=None
+            try:
+                var=all_questions[:10]
+            except:
+                var=all_questions
+            data = AnonQuestionsSerializer(var, many=True).data
+
+            response = {
+                'message':'success',
+                'body':data,
+                'status':HTTP_200_OK
+            }
+            return Response(response, status=HTTP_200_OK)
+
+
+class myFeed(APIView):
+    permission_classes = (IsAuthenticated, AuthorizedPermission)
+    permission_class=LimitOffsetPagination
+    def post(self,request):
+        sort_by = request.data.get('sort_by')
+        user = self.request.user
+        user_obj=user.userAssociated
+        following=user_obj.following.all()
+        ques_obj=[]
+        for obj in following:
+            ques=None
+            try:
+                ques=obj.following_user_id.allAnswers.all().latest("created_at").question_id
+            except:
+                pass
+            if ques and ques.status=="open":
+                ques_obj.append((ques,ques.id))
+        interest=user_obj.MyInterest.all()
+        q=Question.objects.filter(category__in=interest,status__in=("open","Open"))
+        for obj in q:
+            ques_obj.append((obj,obj.id))
+        id_list=list(map(lambda a: a[1],ques_obj))
+        all_questions=Question.objects.filter(id__in=id_list)
+        if sort_by == 'new':
+            all_questions=all_questions.order_by('-created_at')
+            print(all_questions.values_list("id"))
+        
+        elif sort_by == 'Popular':
+            all_questions=all_questions.annotate(fieldsum=F("answer_count")+F("upvote_count")).order_by("-fieldsum")
+
+        elif sort_by == 'Unanswered':
+            all_questions=all_questions.filter(answer_count=0)
+        elif sort_by == 'Rising':
+            z_scores = {}
+            for ques in all_questions:
+                user_upvotes=list(ques.question_votes.filter(vote_type__in=("Upvote","upvote")).values('created_at').order_by('created_at').annotate(count=Count("created_at")))
+                if user_upvotes:
+                    date_today = datetime.now(timezone.utc)
+                    created_at = ques.created_at
+                    most_recent_used = user_upvotes[-1]['created_at']
+                    days_created_before = date_today-created_at
+                    days_created_before = int(days_created_before.days)
+                    not_used_days = days_created_before - len(user_upvotes)
+                    if days_created_before>0:
+                        avg_trend = len(user_upvotes)/(days_created_before)
+                    else:
+                        avg_trend = len(user_upvotes)
+
+                    std_deviation = sum(((int(c['count']) - avg_trend) ** 2) for c in user_upvotes)
+                    std_deviation += (((0-avg_trend)**2) * (not_used_days))
+
+                    if days_created_before>0:
+                        standard_deviation = math.sqrt(abs(std_deviation) / (days_created_before))
+                    else:
+                        standard_deviation = math.sqrt(abs(std_deviation))
+
+                    standard_deviation = -1*standard_deviation if std_deviation<0 else standard_deviation
+
+                    if most_recent_used-date_today == 0:            
+                        current_trend = user_upvotes[-1]['count']
+                    else:
+                        current_trend=0
+
+                    standard_deviation = 1 if standard_deviation==0 else standard_deviation
+                    z_score = (current_trend-avg_trend)/standard_deviation
+                    z_scores[ques.id] = z_score
+
+            sorted_question = OrderedDict(sorted(z_scores.items(), key = lambda kv:kv[1], reverse=True))
+            
+            all_questions =[]
+            for ques in sorted_question:
+                # if sorted_hashtags[hashtag]<0:
+                #     break
+                ques_obj=Question.objects.filter(id=ques).first()
+                all_questions.append(ques_obj)
+        else:
+            response = {
+                'message': 'Failed',
+                'error': ['Invalid sort by attribute :choices are ["new","Rising","Unanswered","Popular"]'],
+                'status': HTTP_400_BAD_REQUEST
+            }
+            return Response(response, status=HTTP_400_BAD_REQUEST)
         if all_questions:
             try:
                 paginator = LimitOffsetPagination()
                 paginated_list = paginator.paginate_queryset(all_questions, request)
                 data = OtherQuestionsSerializer(paginated_list, context={ 'request': request }, many=True).data
-
+                
                 response = {
                     'message':'success',
                     'links': {
@@ -615,9 +735,7 @@ class GetQuestionsByCategory(APIView):
             'status':HTTP_200_OK
         }
         return Response(response, status=HTTP_200_OK)
-
-
-# Get Question by Interests/myFeed remains
+     
 
 class LikeQuestion(APIView):
     """
@@ -628,26 +746,28 @@ class LikeQuestion(APIView):
 
     def post(self, request, *args, **kwargs):
         user = self.request.user
-        profile = user.userAssociated.all().first()
+        profile = user.userAssociated
 
         question_id = request.data.get('question_id')
 
-        try:
-            question = get_object_or_404(Question, pk=int(question_id))
-        except:
+        question=Question.objects.filter(id=question_id,status__in=('open', 'Open'))
+      
+        if not question.exists():
             response = {
                 'message': 'Failed',
-                'error': ['Invalid QuestionID'],
+                'error': [
+                    'Invalid Question Id'
+                ],
                 'status': HTTP_400_BAD_REQUEST
             }
-            return Response(response, status=HTTP_400_BAD_REQUEST)
+            return Response(response, status=400)
 
-        get_Like = Like.objects.filter(user_id=profile).filter(question_id=question).first()
+        get_Like = Like.objects.filter(user_id=profile).filter(question_id=question[0]).first()
 
         if get_Like is None:
             message = "Liked"
 
-            Like.objects.create(user_id=profile, question_id=question)
+            Like.objects.create(user_id=profile, question_id=question[0])
         else:
             get_Like.delete()
             message = "Removed from Like"
@@ -660,8 +780,207 @@ class LikeQuestion(APIView):
         return Response(response, status=HTTP_200_OK)
 
 
+class ReactionQuestion(APIView):
+    """
+    React upvote ,downvote or null to remove the reaction
+    """
 
-# def uservotes pending
+    #permission_classes = (IsAuthenticated, AuthorizedPermission)
+
+    def post(self, request, *args, **kwargs):
+        user = self.request.user
+        profile = user.userAssociated
+
+        question_id = request.data.get('question_id')
+        reaction = request.data.get('Reaction')
+        if  reaction and reaction not in ("upvote","downvote"):
+            response = {
+                'message': 'Failed',
+                'error': [
+                    'Invalid reaction'
+                ],
+                'status': HTTP_400_BAD_REQUEST
+            }
+            return Response(response, status=400)
+
+        question=Question.objects.filter(id=question_id,status__in=('open', 'Open')).first()
+        if not question:
+            response = {
+                'message': 'Failed',
+                'error': [
+                    'Invalid Question Id'
+                ],
+                'status': HTTP_400_BAD_REQUEST
+            }
+            return Response(response, status=400)
+
+        get_vote = UserVotes.objects.filter(user=user,question=question)
+        print(get_vote)
+        if reaction :
+            if not get_vote :
+                message = reaction
+
+                UserVotes.objects.create(user=profile.user, question=question,vote_type=reaction)
+            else:
+                if get_vote[0].vote_type==reaction:
+                    message="Already "+reaction
+                else: 
+                    
+                    print(get_vote.delete())
+                    UserVotes.objects.create(user=profile.user, question=question,vote_type=reaction)
+                    message = reaction
+        else:
+            print(get_vote)
+            print(bool(get_vote))
+            if get_vote:
+                message=get_vote[0].vote_type +"Removed"
+                get_vote.delete()
+            else:
+                message="You can't remove reaction when you have not reacted "
+                response = {
+                    'message': message,
+                    'body': [],
+                    'status': 400
+                }
+                return Response(response, status=400)
+                
+        response = {
+            'message': message,
+            'body': [],
+            'status': HTTP_200_OK
+        }
+        return Response(response, status=HTTP_200_OK)
+
+from reportlab.pdfgen import canvas
+from django.http import HttpResponse
+from xhtml2pdf import pisa 
+from io import BytesIO
+from wkhtmltopdf.views import PDFTemplateResponse
+import pdfkit
+
+class getdownloadBook(APIView):
+    # permission_classes = (IsAuthenticated, AuthorizedPermission)
+    def post(self,request):
+        ID=request.data.get("QuestionID")
+        ques_obj=Question.objects.filter(id=ID,status__in=('open','Open'))
+        if not ques_obj.exists():
+            return Response({"message":"Invalid ID"},status=400)
+        
+        ques_data=QuestionDetailSerializer(ques_obj,many=True,context={ 'request': request }).data
+        del ques_data[0]['Answer']
+        dict1={"ques_data":ques_data}
+        if ques_obj.first().question_type not in ('poll', 'Poll'):
+            answers=ques_obj.first().questionAnswer.filter(status__in=('open','Open'))
+            
+            
+            dict1["Answers"]=[]
+            for ans in answers:
+                answer_data=AnsSerializer(ans,context={ 'request': request }).data
+                replies=ans.AnswerReplies.filter(status__in=('open','Open')).order_by("like_count")
+                print(ans,replies)
+                replies_data=BriefReplySerializer(replies,many=True,context={ 'request': request }).data
+                dict1["Answers"].append({"answer_data":answer_data,"replies_data":replies_data})
+        print(dict1)
+        
+        template = get_template('pdf.html')
+        html = template.render(context={
+            "data":dict1
+        })
+        pdfkit.from_string(html,"question.pdf")
+        pdf=open("question.pdf",'rb')
+        response=HttpResponse(pdf.read(),content_type='application/pdf')
+        response["Content-Disposition"]='attachment; filename=output.pdf'
+        # buffer=BytesIO()
+        # p=canvas.Canvas(buffer)
+        # p.drawString(100,100,json.dumps(dict1))
+        # print(json.dumps(dict1))
+        # p.save()
+        # pdf.close()
+        # # os.remove("question.pdf")
+        # pdf=buffer.getvalue()
+        # buffer.close()
+        response.write(pdf)
+        return response
+        # template = get_template("templatePrint.html")
+        # context = {"user": user_obj,"formula":formula_obj,"cnsobj":consumptions_obj,"prodobj":productions_obj,"over":overhead_obj} # data is the context data that is sent to the html file to render the output. 
+        # html = template.render(context)  # Renders the template with the context data.
+        # path_wkhtmltopdf = r'C:\\Program Files (x86)\\wkhtmltox\\bin\\wkhtmltopdf.exe'
+        #""""
+        # config = pdfkit.configuration(wkhtmltopdf="/usr/bin/wkhtmltopdf")
+        # pdfkit.from_string(html, 'out.pdf',configuration=config)
+        # pdf = open("out.pdf","r",encoding='utf-8',errors='ignore')
+        # response = HttpResponse(pdf.read(), content_type='application/pdf')  # Generates the response as pdf response.
+        # response['Content-Disposition'] = 'attachment; filename=output.pdf'
+        # pdf.close()
+        # return response
+
+        # response = PDFTemplateResponse(request=request,
+        #                            template='pdf.html',
+        #                            filename="hello.pdf",
+        #                            context={"data":"HI"},
+        #                            show_content_in_browser=False,
+        #                            cmd_options=settings.    WKHTMLTOPDF_CMD_OPTIONS,
+        #                            )
+        # return response
+        
+        # html = template.render(context)  # Renders the template with the context data.
+        # path_wkhtmltopdf = r''
+        # config = pdfkit.configuration(wkhtmltopdf=path_wkhtmltopdf)
+        # pdfkit.from_string(html, 'out.pdf',configuration=config)
+        # pdf = open("out.pdf","r",encoding='utf-8',errors='ignore')
+        # response = HttpResponse(pdf.read(), content_type='application/pdf')  # Generates the response as pdf response.
+        # response['Content-Disposition'] = 'attachment; filename=output.pdf'
+        # pdf.close()
+        # return response
+        # print(html)
+        # # Create a Django response object, and specify content_type as pdf
+        # response = HttpResponse(content_type='application/pdf')
+        # response['Content-Disposition'] = 'attachment; filename=report.pdf'
+        # # find the template and render it.
+        # result = BytesIO()
+        # pdf = pisa.pisaDocument(BytesIO(html.encode("ISO-8859-1")), result)
+        # if not pdf.err:
+        #     print("H")
+        #     return HttpResponse(result.getvalue(), content_type='application/pdf')
+        # return None
+        # # create a pdf
+        # pisa_status = pisa.CreatePDF(
+        #     html, dest=response)
+        # # if error then show some funy view
+        # if pisa_status.err:
+        #     return HttpResponse('We had some errors <pre>' + html + '</pre>')
+        # return response
+
+        # pdfkit.from_string(html, "sample_pdf.pdf")
+        # pdf=open("sample_pdf.pdf",'rb')
+        # print(pdf.read())
+        # response = HttpResponse(pdf.read(), content_type='application/pdf')
+        # response['Content-Disposition'] = 'attachment; filename=output.pdf'
+        # pdf.close()
+
+        # return response
+        # print(json.dumps(dict1))
+        # pdfkit.from_string(json.dumps(dict1),"question.pdf")
+        # pdf=open("question11.pdf",'rb')
+        # response=HttpResponse(pdf.read(),content_type='application/pdf')
+        # response["Content-Disposition"]='attachment; filename=output.pdf'
+        # buffer=BytesIO()
+        # p=canvas.Canvas(buffer)
+        # p.drawString(100,100,json.dumps(dict1))
+        # print(json.dumps(dict1))
+        # p.save()
+        # pdf.close()
+        # # os.remove("question.pdf")
+        # pdf=buffer.getvalue()
+        # buffer.close()
+        # response.write(pdf)
+        # return response
+        
+        
+
+
+
+
 
 
 

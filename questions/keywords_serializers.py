@@ -14,7 +14,7 @@ from django.contrib.auth.hashers import check_password
 
 from .keywords_models import Keywords
 from .models import Category
-
+from collectanea.globals import sub_domain
 class KeyWordsSerializer(serializers.ModelSerializer):
     """
     A serializer for Keywords
@@ -22,7 +22,7 @@ class KeyWordsSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Keywords
-        fields = ['name', 'created_at']
+        fields = ['id','name', 'created_at']
 
 class CategorySerializer(serializers.ModelSerializer):
 
@@ -30,11 +30,12 @@ class CategorySerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Category
-        fields = [
-                    'name', 
-                    'status', 
+        fields = [  'id',
+                    'details',
+                    'name',
+                    'status',
                     'category_svg', 
-                    'category_color', 
+                    'color', 
                     'created_at', 
                     'updated_at', 
                     'total_questions', 
@@ -43,6 +44,6 @@ class CategorySerializer(serializers.ModelSerializer):
 
     def get_category_svg(self, obj):
         try:
-            return obj.category_svg.url
+            return  obj.category_svg.url
         except:
             return ''

@@ -1,12 +1,13 @@
 from django.db import models
 from django.utils.html import strip_tags
 from django.template.defaultfilters import slugify
+from django.core.validators import MaxValueValidator, MinValueValidator
 
 from collectanea.globals import ( 
                                 MAX_QUESTION_SIZE, 
                                 CATEGORY_STATUS, QUESTION_STATUS, VOTE_CHOICES, REQUEST_TYPE                            
                             )
-from accounts.models import Profile, User
+
 from .keywords_models import Keywords
 
 from datetime import datetime
@@ -47,7 +48,7 @@ class Question(models.Model):
     questions table for paid and unpaid both.
     """
 
-    author = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="questionAuthor")
+    author = models.ForeignKey('accounts.Profile', on_delete=models.CASCADE, related_name="questionAuthor")
     content = models.CharField(max_length=MAX_QUESTION_SIZE) 
     status = models.CharField(max_length=50, choices=QUESTION_STATUS, default='waiting')
     category = models.ForeignKey(Category, on_delete=models.SET_NULL, related_name="questionCategory", null=True, blank=True)
@@ -60,9 +61,6 @@ class Question(models.Model):
 
     question_type = models.CharField(max_length=10, default='Normal', choices=(('normal', 'Normal'), ('poll', 'Poll')))
 
-    
-    # options = models.ManyToManyField(Options, on_delete=models.CASCADE)
-
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
     class Meta:
@@ -71,7 +69,7 @@ class Question(models.Model):
 
     def upvote(self, user):
         try:
-            self.question_upvote_count.create(user=user, question=self, vote_type="up")
+            self.user_votes.create(user=user, question=self, vote_type="up")
             self.upvote_count += 1
             self.save()                
         except IntegrityError:
@@ -81,7 +79,7 @@ class Question(models.Model):
 
     def downvote(self, user):
         try:
-            self.question_downvote_count.create(user=user, question=self, vote_type="down")
+            self.user_votes.create(user=user, question=self, vote_type="down")
             self.downvote_count -= 1
             self.save()                
         except IntegrityError:
@@ -98,17 +96,11 @@ class Question(models.Model):
 class Options(models.Model):
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     choice = models.CharField(max_length=50)
-    vote = models.PositiveIntegerField(default=0)
-    vote_percent = models.FloatField(default=0)
+    vote = models.PositiveIntegerField(default=0, validators=[MinValueValidator(0)])
+    vote_percent = models.FloatField(default=0, validators=[MaxValueValidator(100), MinValueValidator(0)])
     
     class Meta:
         verbose_name_plural = "Options"
-
-    # def save(self, force_insert=False, force_update=False, using=None, update_fields=None):
-    #     if self.option_set.count() < 4:
-    #         super(Options, self).save()
-    #     else:
-    #         raise Exception(f'{self.question.content} has already 4 Options. No more are allowed.')
 
     def __str__(self):
         return self.choice 
@@ -116,9 +108,10 @@ class Options(models.Model):
 
 
 class UserVotes(models.Model):
-    user = models.ForeignKey(User, related_name="user_votes", on_delete=models.CASCADE)
+    user = models.ForeignKey('accounts.User', related_name="user_votes", on_delete=models.CASCADE)
     question = models.ForeignKey(Question, related_name="question_votes", on_delete=models.CASCADE)
     vote_type = models.CharField(max_length=10, choices=VOTE_CHOICES)
+    created_at = models.DateTimeField(auto_now_add = True)
 
 
     class Meta:
@@ -131,7 +124,7 @@ class BookmarkQuestion(models.Model):
     bookmark a question
     """
 
-    user_id = models.ForeignKey(Profile, related_name="userBookmarked", on_delete=models.CASCADE)
+    user_id = models.ForeignKey('accounts.Profile', related_name="userBookmarked", on_delete=models.CASCADE)
     question_id = models.ForeignKey(Question, related_name="questionBookmarked", on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add = True)
     updated_at = models.DateTimeField(auto_now = True)
@@ -148,7 +141,7 @@ class Like(models.Model):
     NOTE: No Dislike allowed
     """
 
-    user_id = models.ForeignKey(Profile, on_delete=models.CASCADE, related_name="userLikes")
+    user_id = models.ForeignKey('accounts.Profile', on_delete=models.CASCADE, related_name="userLikes")
     question_id = models.ForeignKey(Question, related_name="questionLiked", on_delete=models.CASCADE)
     created_at = models.DateField(auto_now_add=True)
 
@@ -156,11 +149,11 @@ class Like(models.Model):
         verbose_name_plural = 'Like questions'
 
     def __str__(self):
-        return f'{self.user_id.full_name} - {self.question_id.content}'
+        return f'{self.user_id.fullname} - {self.question_id.content}'
 
 
 class OptionVotes(models.Model):
-    user = models.ForeignKey(Profile, on_delete=models.CASCADE)
+    user = models.ForeignKey('accounts.Profile', on_delete=models.CASCADE)
     question = models.ForeignKey(Question, on_delete=models.CASCADE)
     option = models.ForeignKey(Options, on_delete=models.CASCADE)
     created_at = models.DateTimeField(auto_now_add=True)
@@ -173,6 +166,7 @@ class OptionVotes(models.Model):
 
 def file_upload_path(instance, filename):
     return f'Question/{instance.question.pk}/{filename}'
+
 
 class QuestionMedia(models.Model):
     """
