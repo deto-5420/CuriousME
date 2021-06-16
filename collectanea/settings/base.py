@@ -68,7 +68,8 @@ INSTALLED_APPS = [
     'misc',
     'notifications',
     'wkhtmltopdf',
-    'otp'
+    'otp',
+    'drf_yasg'
 
     
 ]
