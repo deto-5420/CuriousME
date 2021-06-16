@@ -1,0 +1,131 @@
+
+
+{% load static %}
+
+{% block title %}Answer and Replies{% endblock %}
+
+{% block page_heading %}
+
+
+
+  <div class="row">
+  	
+  	<div class="col-md-12">
+  		
+        <div class="main-card mb-3 ml-5 card" style="background-color: yellow;">
+            <div class="card-body">
+            <h5 class="card-title" ,
+                    style="overflow: hidden;
+                      text-overflow: ellipsis;
+                      display: -webkit-box;
+                      -webkit-line-clamp: 3;
+                      -webkit-box-orient: vertical;
+                      font-size: 20px;
+                      text-transform: none;">
+            
+            
+            <div class="main-card mb-3 ml-5 card", style="float: left" >
+            
+                        
+                            <div class="mt-3 ml-2" style="position: relative;">
+                              <p style="font-size: 20px;">
+                                {{ data.ques_data.0.content |title }}
+                                category : {{data.ques_data.0.category.name}}
+                                {% for keyword in data.ques_data.0.keywords %}
+                        <div class="mb-2 mr-2 badge badge-pill badge-info"> Keyword : {{keyword.name}}</div>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                            {% endfor %}    
+                                  Total Answers : {{data.ques_data.0.answer_count}}&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+                                
+                                  <i class="fa fa-heart m-1" aria-hidden="true" title="Copy to use thumbs-up">&nbsp;</i>{{data.ques_data.0.like_count}}
+                                <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-up"></i> {{data.ques_data.0.upvote_count}}
+                                <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use arrow-down"></i> {{data.ques_data.0.downvote_count}}
+                              </p>
+                            </div>
+                        </div>  
+                        <p>
+                          {% for file in data.ques_data.0.Attachment %}
+                            <a href="{{file.file_type}}">
+                                <li>{{file.URL}}</li>
+                            </a>
+                          {% endfor %}
+                        </p>
+              <button class=" border-0 btn-transition btn btn-outline-info">
+                <i class="fa fa-fw" aria-hidden="true" title="Restore content"></i>
+              </button> 
+            </a>
+
+        
+            </div>
+        </div>
+              
+            </h5>
+            
+          
+            
+            {% for answer in data.Answers %}
+          <div class="main-card mb-3 ml-5 card" style="background-color: #f2f2f2;">
+            <div class="card-body">
+             
+              {{answer.answer_data.username|title}}
+              </a>
+              
+            <div style="float: right;">
+            </div>
+              <p class="ml-4">
+                  {% if not answer.answer_data.status == 'deleted' %}
+                	 {{answer.answer_data.Answer}}
+                  {% else %}
+                    <i>Answer Deleted</i>
+                  {% endif %}
+                
+              </p> 
+            </div>
+            {% if not answer.answer_data.replies_count == 0 %}
+            <div class="container">
+            	<div id="exampleAccordion" data-children=".item">
+            	<div class="item mb-3">
+        
+                {% for reply in answer.replies_data %}
+                  	<p class="">
+                  		<div class="main-card ml-5 card" style="background-color: #e2e2e2; ">
+                  	{% if reply.status == 'deleted' %}
+                            {{ "Deleted"|title}}
+                          {% else %}
+                             
+                             {{ reply.content|title }}
+                          {% endif %}	
+                        
+                        <div style="float: right;">
+                          
+                        </div>
+                        <p class="ml-4">
+                  				
+                        </p>
+                        <div style="float: right;">
+                          <i class="fa fa-fw m-1 " aria-hidden="true" title="Copy to use thumbs-up"></i>{{reply.like_count}}
+                          <i class="fa fa-fw m-1" aria-hidden="true" title="Copy to use thumbs-down"></i>{{reply.dislike_count}}
+                        </div>
+                  			</div>
+                  		</div>
+                  	</p>
+
+               
+                  </div>
+
+                {% endfor %}
+                                    
+
+              </div>
+              {% endif %}
+            </div>
+            
+            
+    	    </div>
+            {% empty %}
+             <center>No Answers Yet! </center>
+            {% endfor %}
+            
+        </div>
+  	
+
+{% endblock %}
