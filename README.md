@@ -1,6 +1,8 @@
 # CuriousME
 ->A QnA platform where sub-admin of the platform will post questions, handle spam requests and much more, the sub-admin adds questions related to different categories.
+
 ->Users log in and answer interesting questions that are appealing to them.
+
 ->Admin can manage users, content of the platform etc.
 
 
